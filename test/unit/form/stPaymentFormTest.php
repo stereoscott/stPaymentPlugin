@@ -61,7 +61,9 @@ $t->comment('initMerchantAccountCredentials');
 // set up merchant account credits without db connection
 $credentials = sfConfig::get('app_stPayment_merchantAccount');
 
-$f->setMerchantAccountCredentials($credentials['ifi']);
+$processor = stAuthorizeNet::getInstance();
+$processor->setUsername($credentials['ifi']['login']);
+$processor->setPassword($credentials['ifi']['key']);
 
 $f->bind($values);
 

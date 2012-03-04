@@ -6,59 +6,61 @@
  */
 class stPaymentProcessor {
   
+  public static $instances = array();
+  
   private 
     $gatewayUrl,
     $username,
     $password,
     $version,
     $testMode = false;
-  
-  private function getGatewayUrl()
+    
+  protected function getGatewayUrl()
   {
     return $this->gatewayUrl;
   }
   
-  private function setGatewayUrl($gatewayUrl)
+  protected function setGatewayUrl($gatewayUrl)
   {
     $this->gatewayUrl = $gatewayUrl;
   }
   
-  private function getUsername()
+  public function getUsername()
   {
     return $this->username;
   }
   
-  private function setUsername($username)
+  public function setUsername($username)
   {
     $this->username = $username;
   }
   
-  private function getPassword()
+  public function getPassword()
   {
     return $this->password;
   }
   
-  private function setPassword($password)
+  public function setPassword($password)
   {
     $this->password = $password;
   }
   
-  private function getVersion()
+  protected function getVersion()
   {
     return $this->version;
   }
   
-  private function setVersion($version)
+  protected function setVersion($version)
   {
     $this->version = $version;
   }
   
-  private function getTestMode()
+  protected function getTestMode()
   {
     return (boolean) $this->testMode;
   }
   
-  private function setTestMode($testMode)
+  protected function setTestMode($testMode)
   {
     $this->testMode = (boolean) $testMode;
   }

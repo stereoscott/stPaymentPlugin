@@ -1,0 +1,112 @@
+# To receive and process Silent Post data all you really need to know is what 
+# fields to expect. Basically it reports the same information as an AIM 
+# transaction response but also includes the subscription ID and subscription 
+# transaction number for ARB subscriptions and CIM Profile ID for CIM 
+# transactions. See the AIM integration guide for details about the response
+# codes.
+
+AuthNetSubscription:
+  actAs:
+    Timestampable: ~
+  columns:
+    id:                     { type: integer, primary: true, autoincrement: true }
+    subscription_id:        string(50)
+    name:                   string(50)
+    status:                 string(20) # active, expired, suspended, canceled, terminated
+    interval_length:        integer(3)
+    interval_unit:          string(6)   # days or months
+    start_date:             date        # YYYY-MM-DD
+    total_occurrences:      integer(4)  # no end date = 9999, if trial specified this should include trial
+    trial_occurrences:      integer(2)
+    amount:                 { type: decimal(12), scale: 2 }
+    trial_amount:           { type: decimal(12), scale: 2 }
+    payment_method:         string(6)   # CC or ECHECK
+    cc_last_four_digits:    integer(4)
+    cc_expiration_date:     date        # sent as YYYY-MM, stored as YYYY-MM-00
+    bank_account_name:      string(22)  # full name of individual associated with bank account number
+    invoice_number:         string(20)
+    order_description:      string(255)
+    customer_id:            string(20)  # merchant-assigned identifier for the customer
+    customer_email:         string(255)
+    customer_phone:         integer(25)
+    customer_fax:           integer(25)
+    bill_to_first_name:     string(50)
+    bill_to_last_name:      string(50)
+    bill_to_company:        string(50)
+    bill_to_address:        string(60)
+    bill_to_city:           string(40)
+    bill_to_state:          string(40)
+    bill_to_zip:            string(20)
+    bill_to_country:        string(60)
+    ship_to_first_name:     string(50)
+    ship_to_last_name:      string(50)
+    ship_to_company:        string(50)
+    ship_to_address:        string(60)
+    ship_to_city:           string(40)
+    ship_to_state:          string(40)
+    ship_to_zip:            string(20)
+    ship_to_country:        string(60)
+
+AuthNetTransaction:
+  actAs:
+    Timestampable: ~
+  columns:
+    id:                     { type: integer, primary: true, autoincrement: true }
+    response_code:         integer(1) #1, 2, 3, 4
+    response_subcode:      string(50)
+    response_reason_code:  integer(3)
+    response_reason_text:  string(255)
+    auth_code:             string(6)
+    avs_code:              string(1)
+    trans_id:              string(50)
+    invoice_num:           string(20)
+    description:           string(255)
+    amount:                { type: decimal(12), scale: 2 }
+    method:                string(6) # CC or ECHECK
+    type:                  string(20) # AUTH_CAPTURE, AUTH_ONLY, CAPTURE_ONLY, CREDIT, PRIOR_AUTH_CAPTURE, VOID
+    customer_id:           string(20)
+    customer_ip:           string(15)
+    first_name:            string(50)
+    last_name:             string(50)
+    company:               string(50)
+    address:               string(60)
+    city:                  string(40)
+    state:                 string(40)
+    zip:                   string(20)
+    country:               string(60)
+    phone:                 string(25)
+    fax:                   string(25)
+    email:                 string(255)
+    ship_to_first_name:    string(50)
+    ship_to_last_name:     string(50)
+    ship_to_company:       string(50)
+    ship_to_address:       string(60)
+    ship_to_city:          string(40)
+    ship_to_state:         string(40)
+    ship_to_zip:           string(20)
+    ship_to_country:       string(60)
+    tax:                   string(255)
+    duty:                  string(255)
+    freight:               string(255)
+    tax_exempt:            boolean
+    po_num:                string(25)
+    MD5_Hash:              string(50)
+    cavv_response:         string(255)
+    test_request:          boolean
+    subscription_id:       string(13) # digits, make sure to chop of the "R" in the response if present
+    subscription_paynum:   integer(4)
+
+# usually you want to extend this to relate it to a customer or user object
+AuthNetTransactionError:
+  actAs:
+    Timestampable: ~
+  columns:
+    id:                       { type: integer, primary: true, autoincrement: true }
+    auth_net_transaction_id:  integer
+    is_processed:             { type: boolean, default: false }
+    emailed_at:               timestamp
+  relations:
+    AuthNetTransaction:
+      local: auth_net_transaction_id
+      foreign: id
+      foreignKeyName: transaction_id_fk

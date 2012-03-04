@@ -5,13 +5,11 @@
  * @package stPaymentPlugin
  * @author Scott Meves
  */
-class BasestPaymentForm extends sfForm
+class BasestPaymentForm extends BasestPaymentBaseForm
 {
     
   protected static $creditCardOptions = array('Visa' => 'Visa', 'Mastercard' => 'Mastercard', 'American Express' => 'American Express', 'Discover' => 'Discover');
-  
-  protected $amount, $orderNumber, $orderDescription;
-  
+    
   protected $transactionResponse, $responseMessage, $validTransaction, $transactionId;
   
   protected $paymentProcessor;
@@ -113,62 +111,9 @@ class BasestPaymentForm extends sfForm
    */
   public function initMerchantAccountCredentials($cobrand = null, $site = null)
   {
-    // which merchant account do we use?
-    $merchantAccounts = sfConfig::get('app_stPayment_merchantAccount', array());
-    
-    $merchantAccountConfigKey = false;
-    if ($cobrand && $cobrand['merchant_account_id']) {
-      $this->setOption('merchant_account_id', $cobrand['merchant_account_id']);
-      $merchantAccountConfigKey = $cobrand['MerchantAccount']['config_key'];
-    } elseif ($site && $site['merchant_account_id']) {
-      $this->setOption('merchant_account_id', $site['merchant_account_id']);
-      $merchantAccountConfigKey = $site['MerchantAccount']['config_key'];
-    }
-    
-    if (!$merchantAccountConfigKey) {
-      $merchantAccountConfigKey = sfConfig::get('app_stPayment_default', 'idprotection');
-      // note use of Doctrine rather than Doctrine_Core for backwards compatibility
-      $merchantAccountId = Doctrine::getTable('MerchantAccount')->selectIdFromKey($merchantAccountConfigKey);
-      $this->setOption('merchant_account_id', $merchantAccountId);
-    }
-  
-    if (!$this->getMerchantAccountId() && ($logger = sfContext::getInstance()->getLogger())) {
-      $logger->err('Missing merchant account ID for key: '.$merchantAccountConfigKey);
-    }
-    
-    if (isset($merchantAccounts[$merchantAccountConfigKey])) {
-      $this->setMerchantAccountCredentials($merchantAccounts[$merchantAccountConfigKey]);
-    } else {
-      throw new Exception("No Auth.Net Credentials for $merchantAccountConfigKey. Check app.yml.");
-    }
+    $this->getPaymentProcessor()->initMerchantAccountCredentials($cobrand, $site);
   }
     
-  /**
-   * Return an array in the form: array('login' => 'xxx', 'key' => xxx)
-   *
-   * @return array
-   */
-  protected function getMerchantAccountCredentials()
-  {
-    $credentials = $this->getOption('merchantAccountCredentials');
-    if (!is_array($credentials)) {
-      throw new Exception('You must call initMerchantAccountCredentials before calling getMerchantAccountCredentials');
-    }
-
-    return $credentials;
-  }
-  
-  /**
-   * Make sure to pass an array with 'login' and 'key' values
-   *
-   * @param array $v 
-   * @return void
-   */
-  public function setMerchantAccountCredentials(array $v)
-  {
-    $this->setOption('merchantAccountCredentials', $v);
-  }
-  
   /**
    * Process the transaction and return the response. Sets the response to 
    * the $transactionResponse instance variable.
@@ -277,8 +222,8 @@ class BasestPaymentForm extends sfForm
       $intervalLength = ($this->getPaymentPeriod() == 'yearly') ? 12 : 1; // in months
     }
     
-    $apiLogin = $this->getMerchantAccountCredentials();
-    $arbRequest = new AuthorizeNetARB($apiLogin['login'], $apiLogin['key']);
+    $processor = $this->getPaymentProcessor();
+    $arbRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
     
     $startDate      = $this->getSubscriptionStartDate($trialLengthString);
     $subscription   = $this->getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $invoiceNumber);
@@ -333,9 +278,8 @@ class BasestPaymentForm extends sfForm
    */
   protected function getAuthorizeNetAIM($amount)
   {
-    
-    $apiLogin = $this->getMerchantAccountCredentials();
-    $transaction = new AuthorizeNetAIM($apiLogin['login'], $apiLogin['key']);
+    $processor = $this->getPaymentProcessor();
+    $transaction = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
 
     $transaction->setFields($this->getTransactionFields($amount));
     $transaction->setCustomField("affiliate_code", $this->getOption('affiliate_code', 'IFI'));
@@ -459,56 +403,18 @@ class BasestPaymentForm extends sfForm
    */
   protected function processVoid($transactionId)
   {
-    $apiLogin = $this->getMerchantAccountCredentials();
-    $void = new AuthorizeNetAIM($apiLogin['login'], $apiLogin['key']);
+    $processor = $this->getPaymentProcessor();
+    $void = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
     
     return $void->void($transactionId);
   }
   
   protected function cancelSubscription($subscriptionId)
   {
-    $apiLogin = $this->getMerchantAccountCredentials();
-    $arb = new AuthorizeNetARB($apiLogin['login'], $apiLogin['key']);
+    $processor = $this->getPaymentProcessor();
+    $arb = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
     
     return $arb->cancelSubscription($subscriptionId);
-  }
-  /**
-   * Given the bound/cleaned form values, return an array of fields
-   * for use with an AuthorizeNetAIM object.
-   *
-   * @param float $amount   The amount of the transaction
-   * @return array $fields  An array containing amount, credit card and billing details
-   */
-  protected function getTransactionFields($amount = null)
-  {
-    
-    $values = $this->getValues();
-        
-    if (null === $amount) {
-      $amount = $this->getAmount();
-    }
-    
-    $fields = array(
-      'amount'                          => number_format($amount, 2),
-      'card_num'                        => preg_replace('/[^0-9]/', '', $values['acct']),
-      'exp_date'                        => date('my', strtotime($values['exp'])),
-      'card_code'                       => $values['cvv2'],
-      'first_name'                      => substr($values['fname'], 0, 50),
-      'last_name'                       => substr($values['lname'], 0, 50),
-      'email'                           => substr($this->getOption('billingEmail'), 0, 255),
-      'address'                         => substr($values['street'], 0, 60),
-      'city'                            => substr($values['city'], 0, 40),
-      'state'                           => $values['state'], // ARB requires two-letter state
-      'zip'                             => substr($values['zip'], 0, 20),
-      'country'                         => substr($values['country'], 0, 60),
-      'customer_ip'                     => $_SERVER['REMOTE_ADDR'],
-      'cust_id'                         => substr(htmlentities($this->getAffiliateCode()), 0, 20), //$this->getOption('customerId') 20 chars max
-      'description'                     => $this->getOrderDescription(),
-      'invoice_num'                     => $this->getOrderNumber(),
-      'email_customer'                  => 0
-    );
-        
-    return $fields;
   }
     
   /**
@@ -538,19 +444,8 @@ class BasestPaymentForm extends sfForm
   
   public function getMerchantAccountId()
   {
-    return $this->getOption('merchant_account_id');
+    return $this->getPaymentProcessor()->getMerchantAccountId();
   }
-
-  public function setAffiliateCode($v)
-  {
-    $this->setOption('affiliate_code', $v);
-  }
-
-  // is set to cust_id which has a limit of 20 chars
-  public function getAffiliateCode()
-  {
-    return $this->getOption('affiliate_code', 'IFI');
-  }  
 
   public function getProtectedValues()
   {
@@ -575,26 +470,6 @@ class BasestPaymentForm extends sfForm
     }
     
     return $protectedValues;
-  }
-
-  public function getOrderNumber() 
-  {
-    return $this->orderNumber; // $this->getAffiliateCode()...
-  }
-
-  public function setOrderNumber($orderNumber) 
-  {
-    $this->orderNumber = $orderNumber;
-  }
-  
-  public function getOrderDescription() 
-  {
-    return substr($this->orderDescription, 0, 255);
-  }
-
-  public function setOrderDescription($orderDescription) 
-  {
-    $this->orderDescription = $orderDescription;
   }
   
   public function getPaymentPeriod() 
@@ -654,22 +529,6 @@ class BasestPaymentForm extends sfForm
   public function getTrialPeriod()
   {
     return $this->getOption('trialPeriod');
-  }
-  
-  /**
-   * Amount due at time of the transaction (includes trial price for trial offers).
-   *
-   * @param string $amount 
-   * @return void
-   */
-  public function setAmount($amount)
-  {
-    $this->amount = $amount;
-  }
-  
-  public function getAmount()
-  {
-    return $this->amount;
   }
   
   public function showBillingFields()
@@ -768,7 +627,9 @@ class BasestPaymentForm extends sfForm
   {
     return $this->validatorSchema->getPostValidator();
   }
+  
+  public function getPaymentProcessor()
+  {
+    return stAuthorizeNet::getInstance();
+  }
 }
-
-
-?>
