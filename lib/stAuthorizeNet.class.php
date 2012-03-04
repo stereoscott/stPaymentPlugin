@@ -10,11 +10,10 @@ class stAuthorizeNet extends stPaymentProcessor
     $key = (null === $username) ? '___DEFAULT_INSTANCE___' : $username;
     
     if (!isset(self::$instances[$key])) {
-      return new self($username, $password, $options);
-    } else {
-      return self::$instances[$key];
-    }
+      self::$instances[$key] = new self($username, $password, $options);
+    } 
     
+    return self::$instances[$key];    
   }
   
   public static function getLogFilePath()
@@ -52,7 +51,7 @@ class stAuthorizeNet extends stPaymentProcessor
       $merchantAccountId = Doctrine::getTable('MerchantAccount')->selectIdFromKey($merchantAccountConfigKey);
       $this->merchantAccountId = $merchantAccountId;
     }
-  
+      
     if (!$this->merchantAccountId && ($logger = sfContext::getInstance()->getLogger())) {
       $logger->err('Missing merchant account ID for key: '.$merchantAccountConfigKey);
     }

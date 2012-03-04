@@ -130,7 +130,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     if (sfConfig::get('sf_logging_enabled')) {
       define('AUTHORIZENET_LOG_FILE', sfConfig::get('sf_log_dir').'/authorizenet_'.sfConfig::get('sf_environment').'.log');
     }
-        
+            
     if ($trialLength = $this->getTrialPeriod()) {
       if ($trialAmount = $this->getAmount()) { // amount of first charge
         $response = $this->authorizeCaptureAndSubscribe($trialAmount, $this->getAmountAfterTrial(), $trialLength.' days');
@@ -279,6 +279,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
   protected function getAuthorizeNetAIM($amount)
   {
     $processor = $this->getPaymentProcessor();
+    
     $transaction = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
 
     $transaction->setFields($this->getTransactionFields($amount));

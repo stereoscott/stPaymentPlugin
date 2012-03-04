@@ -35,7 +35,7 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
   
   public static function fromSilentPost(stAuthorizeNetSilentPostResponse $response) 
   {
-    $transaction = new self();
+    $transaction = new AuthNetTransaction();
     
     $values = array(    
       'response_code'        => $response->response_code,        #1, 2, 3, 4
