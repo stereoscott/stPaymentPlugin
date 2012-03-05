@@ -62,7 +62,7 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
       'country'              => $response->country,              
       'phone'                => $response->phone,                
       'fax'                  => $response->fax,                  
-      'email'                => $response->email,                
+      'email'                => $response->email_address,
       'ship_to_first_name'   => $response->ship_to_first_name,   
       'ship_to_last_name'    => $response->ship_to_last_name,    
       'ship_to_company'      => $response->ship_to_company,      
@@ -87,5 +87,63 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
     
     return $transaction;
   }
-
+  
+  public static function fromAIMResponse(AuthorizeNetAIM_Response $response) 
+  {
+    $transaction = new AuthNetTransaction();
+    $transaction->updateWithAIMResponse($response);
+        
+    return $transaction;                                        
+  }
+  
+  public function updateWithAIMResponse(AuthorizeNetAIM_Response $response) 
+  {
+    $values = array(
+      'response_code'        => $response->response_code,        #1, 2, 3, 4
+      'response_subcode'     => $response->response_subcode,
+      'response_reason_code' => $response->response_reason_code,
+      'response_reason_text' => $response->response_reason_text,
+      'auth_code'            => $response->authorization_code,
+      'avs_code'             => $response->avs_response,
+      'trans_id'             => $response->transaction_id,
+      'invoice_num'          => $response->invoice_number,
+      'description'          => $response->description,
+      'amount'               => $response->amount,
+      'method'               => $response->method,               # CC or ECHECK
+      'type'                 => $response->transaction_type,     # AUTH_CAPTURE, AUTH_ONLY, CAPTURE_ONLY, CREDIT, PRIOR_AUTH_CAPTURE, VOID
+      'cust_id'              => $response->customer_id,
+      'customer_ip'          => (isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : null),
+      'first_name'           => $response->first_name,
+      'last_name'            => $response->last_name,
+      'company'              => $response->company,
+      'address'              => $response->address,
+      'city'                 => $response->city,
+      'state'                => $response->state,
+      'zip'                  => $response->zip_code,
+      'country'              => $response->country,
+      'phone'                => $response->phone,
+      'fax'                  => $response->fax,
+      'email'                => $response->email_address,
+      'ship_to_first_name'   => $response->ship_to_first_name,
+      'ship_to_last_name'    => $response->ship_to_last_name,
+      'ship_to_company'      => $response->ship_to_company,
+      'ship_to_address'      => $response->ship_to_address,
+      'ship_to_city'         => $response->ship_to_city,
+      'ship_to_state'        => $response->ship_to_state,
+      'ship_to_zip'          => $response->ship_to_zip_code,
+      'ship_to_country'      => $response->ship_to_country,
+      'tax'                  => $response->tax,
+      'duty'                 => $response->duty,
+      'freight'              => $response->freight,
+      'tax_exempt'           => $response->tax_exempt,
+      'po_num'               => $response->purchase_order_number,
+      'MD5_Hash'             => $response->md5_hash,
+      'cavv_response'        => $response->cavv_response,
+      'test_request'         => null,
+      'subscription_id'      => null,
+      'subscription_paynum'  => null,
+    );
+    
+    $this->fromArray($values);
+  }
 }

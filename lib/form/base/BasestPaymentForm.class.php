@@ -18,6 +18,8 @@ class BasestPaymentForm extends BasestPaymentBaseForm
   
   protected $transactions = array(); // store completed transaction identifiers so if something goes wrong we can void them all
   
+  protected $authNetSubscription, $authNetTransaction;
+  
   // Turn off CSRF protection, as on a split form the generated token on each page was different
   public function __construct($defaults = array(), $options = array(), $CSRFSecret = null)
   {
@@ -98,6 +100,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     $item = $shoppingCart->getCurrentItem();
     $this->setPaymentPeriod($item->getParameter('term', 'yearly'));
     $this->setOrderDescription($item->getParameter('name'));    
+    $this->setProfileName($item->getParameter('name'));
   }
   
   /**
@@ -130,7 +133,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     if (sfConfig::get('sf_logging_enabled')) {
       define('AUTHORIZENET_LOG_FILE', sfConfig::get('sf_log_dir').'/authorizenet_'.sfConfig::get('sf_environment').'.log');
     }
-            
+           
     if ($trialLength = $this->getTrialPeriod()) {
       if ($trialAmount = $this->getAmount()) { // amount of first charge
         $response = $this->authorizeCaptureAndSubscribe($trialAmount, $this->getAmountAfterTrial(), $trialLength.' days');
@@ -166,11 +169,14 @@ class BasestPaymentForm extends BasestPaymentBaseForm
    */
   protected function authorizeCaptureAndSubscribe($firstAmount, $recurringAmount, $recurringStartDate)
   {
+    // first we authorize and capture. this is saved to the database.
     $response = $this->authorizeAndCapture($firstAmount);
 
     if ($response->approved) {  
-    
-      $arbResponse = $this->processRecurringTransaction($recurringAmount, $recurringStartDate, null, $response->transaction_id);
+      // set up an ARB subscription. use the custom invoice number, or if not set use
+      // use the transaction_id as our subscription invoice number.
+      $invoiceNumber = $this->getOrderNumber() ? $this->getOrderNumber() : $response->transaction_id;
+      $arbResponse = $this->processRecurringTransaction($recurringAmount, $recurringStartDate, null, $invoiceNumber);
       
       if (!$arbResponse->isOk()) 
       {
@@ -198,7 +204,10 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     
     if ($response->approved) {
       $this->processVoid($response->transaction_id);
-      $arbResponse = $this->processRecurringTransaction($amountAfterTrial, $trialLengthString, null, $response->transaction_id);
+      // set up an ARB subscription. use the custom invoice number, or if not set use
+      // use the transaction_id as our subscription invoice number.
+      $invoiceNumber = $this->getOrderNumber() ? $this->getOrderNumber() : $response->transaction_id;
+      $arbResponse = $this->processRecurringTransaction($amountAfterTrial, $trialLengthString, null, $invoiceNumber);
       
       return $arbResponse;
     } else {
@@ -229,8 +238,9 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     $subscription   = $this->getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $invoiceNumber);
     
     $response = $arbRequest->createSubscription($subscription);
-    
+        
     if ($response->isOk()) {
+      $this->saveAuthNetSubscriptionToDb($subscription, $response);
       $this->logResponse($response);
     }
     
@@ -248,8 +258,9 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     
     /* var AuthorizeNetAIM_Response */
     $response = $transaction->authorizeAndCapture();
-    
+        
     if ($response->approved) {
+      $this->saveAuthNetTransactionToDb($response);
       $this->logResponse($response);
     }
     
@@ -264,8 +275,9 @@ class BasestPaymentForm extends BasestPaymentBaseForm
   protected function authorizeOnly($amount)
   {
     $transaction = $this->getAuthorizeNetAIM($amount);
-
-    return $transaction->authorizeOnly();
+    $response = $transaction->authorizeOnly();
+        
+    return $response;
   }
   
   /**
@@ -296,6 +308,51 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     
     return $transaction;
   }
+  
+  protected function saveAuthNetTransactionToDb(AuthorizeNetAIM_Response $response)
+  {
+    try {
+      // save the transaction to the database and store it in the instance variable
+      $authNetTransaction = AuthNetTransaction::fromAIMResponse($response);
+      if ($customerId = $this->getCustomerId()) {
+        $authNetTransaction['local_customer_id'] = $customerId;
+      }
+      $authNetTransaction->save();
+      $this->setAuthNetTransaction($authNetTransaction);
+
+      return $authNetTransaction;
+    } catch (Exception $e) {
+      // not critical enough to stop
+      sfContext::getInstance()->getLogger()->crit('Could not save an auth_net_transaction object to the db: '.$e->getMessage());
+      if (sfConfig::get('sf_environment') == 'dev') {
+        throw $e;
+      }
+      return null;
+    }
+  }
+  
+  protected function saveAuthNetSubscriptionToDb(AuthorizeNet_Subscription $subscription, AuthorizeNetARB_Response $response)
+  {
+    try {
+      // save the transaction to the database and store it in the instance variable
+      $authNetSubscription = AuthNetSubscription::fromARBSubscriptionAndResponse($subscription, $response);
+      if ($customerId = $this->getCustomerId()) {
+        $authNetSubscription['local_customer_id'] = $customerId;
+      }
+      $authNetSubscription->save();
+      $this->setAuthNetSubscription($authNetSubscription);
+    
+      return $authNetSubscription;
+    } catch (Exception $e) {
+      // not critical enough to stop. Is this terrible? 
+      sfContext::getInstance()->getLogger()->crit('Could not save an auth_net_transaction object to the db: '.$e->getMessage());
+      if (sfConfig::get('sf_environment') == 'dev') {
+        throw $e;
+      }
+      return null;
+    }
+  }
+  
   
   /**
    * Returns a date x-days from today
@@ -345,7 +402,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
    * @param string $amount In the format of "000.00"
    * @return AuthorizeNet_Subscription $subscription
    */
-  protected function getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $defaultInvoiceNumber = null)
+  protected function getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $customInvoiceNumber = null)
   {
     $subscription = new AuthorizeNet_Subscription;
     
@@ -359,8 +416,9 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     
     $fields = $this->getTransactionFields();
     
-    $invoiceNumber = ($fields['invoice_num'] ? $fields['invoice_num'] : $defaultInvoiceNumber);
-    
+    // by default, $fields['invoice_num'] will contain the value of $this->getOrderNumber();
+    // you can override this by passing a customInvoiceNumber
+    $invoiceNumber = ($customInvoiceNumber ? $customInvoiceNumber : $fields['invoice_num']);
     $subscription->creditCardCardNumber     = $fields['card_num'];
     
     // if the expiration date is going to expire before the start date
@@ -407,15 +465,36 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     $processor = $this->getPaymentProcessor();
     $void = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
     
-    return $void->void($transactionId);
+    $voidResponse = $void->void($transactionId);
+    
+    if ($voidResponse->approved) {
+      if ($this->authNetTransaction) {
+        if ($this->authNetTransaction['trans_id'] == $transactionId) {
+          $this->authNetTransaction->updateWithAIMResponse($voidResponse);
+          $this->authNetTransaction->save();
+        }
+      }
+    }
+    
+    return $voidResponse;
   }
   
   protected function cancelSubscription($subscriptionId)
   {
     $processor = $this->getPaymentProcessor();
     $arb = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
+    $response = $arb->cancelSubscription($subscriptionId);
     
-    return $arb->cancelSubscription($subscriptionId);
+    if ($response->isOk()) {
+      if ($this->authNetSubscription) {
+        if ($this->authNetSubscription['subscriptionId'] == $subscriptionId) {
+          $this->authNetSubscription['status'] = 'cancelled';
+          $this->authNetSubscription->save();
+        }
+      }
+    }
+    
+    return $response;
   }
     
   /**
@@ -618,6 +697,26 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     }
   }
 
+  /**
+   * After this purchase is successful, the action will usually create a customer object.
+   * At that point we can use this method to update our transactions with the local customer ids
+   *
+   * @param string $customerId 
+   * @param Doctrine_Connection $conn 
+   * @return void
+   */
+  public function updateTransactionsWithLocalCustomerId($customerId, $conn = null) 
+  {
+    if ($this->authNetTransaction) {
+      $this->authNetTransaction['local_customer_id'] = $customerId;
+      $this->authNetTransaction->save($conn);
+    }
+    
+    if ($this->authNetSubscription) {
+      $this->authNetSubscription['local_customer_id'] = $customerId;
+      $this->authNetSubscription->save($conn);
+    }
+  }
   
   /**
    * Convenience method.
@@ -633,4 +732,43 @@ class BasestPaymentForm extends BasestPaymentBaseForm
   {
     return stAuthorizeNet::getInstance();
   }
+  
+  /**
+   * DO NOT CONFUSE THIS with getAuthorizeNetSubscription, which returns the request object for the api.
+   * this returns the local object that we track in the database
+   *
+   * @return void
+   */
+  public function getAuthNetSubscription() {
+    return $this->authNetSubscription;
+  }
+
+  public function setAuthNetSubscription($v) {
+    $this->authNetSubscription = $v;
+  }
+  
+  public function getAuthNetTransaction() {
+    return $this->authNetTransaction;
+  }
+
+  public function setAuthNetTransaction($v) {
+    $this->authNetTransaction = $v;
+  }
+
+  /**
+   * This is useful for when we want to store a local_customer_id along with the transactions
+   *
+   * @return int An existing customer id
+   */
+  public function getCustomerId()
+  {
+    return $this->getOption('customerId');
+  }
+  
+  public function setCustomerId($v)
+  {
+    $this->setOption('customerId', $v);
+  }
+
+  
 }
