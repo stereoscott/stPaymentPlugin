@@ -323,6 +323,10 @@ class BasestPaymentForm extends BasestPaymentBaseForm
       if ($customerId = $this->getCustomerId()) {
         $authNetTransaction['local_customer_id'] = $customerId;
       }
+      if ($merchantAccountId = $this->getMerchantAccountId()) {
+        $authNetTransaction['merchant_account_id'] = $merchantAccountId;
+      }
+      
       $authNetTransaction->save();
       $this->setAuthNetTransaction($authNetTransaction);
 
@@ -344,6 +348,9 @@ class BasestPaymentForm extends BasestPaymentBaseForm
       $authNetSubscription = AuthNetSubscription::fromARBSubscriptionAndResponse($subscription, $response);
       if ($customerId = $this->getCustomerId()) {
         $authNetSubscription['local_customer_id'] = $customerId;
+      }
+      if ($merchantAccountId = $this->getMerchantAccountId()) {
+        $authNetSubscription['merchant_account_id'] = $merchantAccountId;
       }
       $authNetSubscription->save();
       $this->setAuthNetSubscription($authNetSubscription);
