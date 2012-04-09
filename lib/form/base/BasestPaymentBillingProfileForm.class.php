@@ -1,7 +1,9 @@
 <?php
 
 /**
- * The payment form is responsible for processing the transaction. 
+ * This is a client facing form that allows them to update their billing subscription.
+ * This could potentiall be refactored to combine with the admin AuthNetSubscription form, 
+ * but this deals with Customer Subscriptions
  * @package stPaymentPlugin
  * @author Scott Meves
  */
@@ -121,6 +123,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     return $subscription;
   }
 
+  /**
+   * We should refactor these form methods with the methods found in the AuthNetSubscription model.
+   */
   protected function processUpdate()
   {
     $processor = $this->getPaymentProcessor();

@@ -17,5 +17,21 @@ class stPaymentPluginConfiguration extends sfPluginConfiguration
    */
   public function initialize()
   {
+    $this->dispatcher->connect('routing.load_configuration', array(__CLASS__, 'listenToRoutingLoadConfigurationEvent'));
+  }
+  
+  static public function listenToRoutingLoadConfigurationEvent(sfEvent $event)
+  {
+    $r = $event->getSubject();
+    $enabledModules = array_flip(sfConfig::get('sf_enabled_modules', array()));
+    if (isset($enabledModules['authNetSubscriptionAdmin']))
+    {
+      $r->prependRoute('authNetSubscriptionAdmin', new sfDoctrineRouteCollection(array('name' => 'authNetSubscriptionAdmin',
+        'model' => 'AuthNetSubscription',
+        'module' => 'authNetSubscriptionAdmin',
+        'prefix_path' => '/admin/payment/subscription',
+        'column' => 'id',
+        'with_wildcard_routes' => true)));
+    }
   }
 }

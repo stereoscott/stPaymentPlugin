@@ -46,6 +46,12 @@ AuthNetSubscription:
     ship_to_state:          string(40)
     ship_to_zip:            string(20)
     ship_to_country:        string(60)
+    merchant_account_id:    { type: integer, notnull: false }
+  relations:
+    MerchantAccount: #define in shopping cart plugin
+      onDelete: SET NULL
+      foreignAlias: AuthNetSubscriptions
+    
 
 AuthNetTransaction:
   actAs:
@@ -95,6 +101,12 @@ AuthNetTransaction:
     test_request:          boolean
     subscription_id:       string(13) # digits, make sure to chop of the "R" in the response if present
     subscription_paynum:   integer(4)
+    merchant_account_id:    { type: integer, notnull: false }
+  relations:
+    MerchantAccount: #define in shopping cart plugin
+      onDelete: SET NULL
+      foreignAlias: AuthNetSubscriptions
+
 
 # usually you want to extend this to relate it to a customer or user object
 AuthNetTransactionError:

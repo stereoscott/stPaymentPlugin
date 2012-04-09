@@ -87,3 +87,10 @@ For annual customers, we can charge the first transaction as we do now, and then
 This way we get a recurring billing profile set up in the system so that we can reference it later. 
 
 Let's say we don't update their ARB subscription info in time, and 1 year from now the transaction fails. We are notified about it as we would with all failed transactions that might occur on a day to day basis. We can actually set up a service on our site that gets notified when they process recurring billing transactions, and if we are notified of a failed transaction, we can put their account on hold, send memberservices an email, or email the customer prompting them to login and update their billing information within their account.
+
+
+== HOW WE UPDATE AUTHNETSUBSCRIPTION RECORDS ==
+1) Using the stPaymentForm, we create a new subscription object, try to create it in the API, and if it succeeds then we create a subscription object ot the db.
+2) Using the AuthNetSubscription::updateStatusUsingAuthNet method to update the status
+3) Using the Admin AuthNetSubscriptionForm
+

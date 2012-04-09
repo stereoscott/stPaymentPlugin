@@ -1,0 +1,30 @@
+generator:
+  class: sfDoctrineGenerator
+  param:
+    model_class:           authNetSubscription
+    theme:                 aAdmin #bad this requires apostrophe... but ok for myifi branch
+    non_verbose_templates: true
+    with_show:             false
+    singular:              authNetSubscription
+    plural:                authNetSubscriptions
+    route_prefix:          authNetSubscriptionAdmin
+    with_doctrine_route:   true
+    actions_base_class:    sfActions
+
+    config:
+      actions: ~
+      fields:  ~
+      list:    
+        table_method: retrieveAdminList
+        title: "Authorize.net Subscription Admin"
+        display: [=id, Customer, name, subscription_id, status, amount, interval_length, interval_unit, start_date]
+        object_actions: 
+          _edit: ~
+          _delete: ~
+          updateStatus: { label: Sync, action: sync }
+        actions: []
+      filter:  ~
+      form:    ~
+      edit:    ~
+      new:     
+        title: Creating a new subscription in the admin area is not currently supported.

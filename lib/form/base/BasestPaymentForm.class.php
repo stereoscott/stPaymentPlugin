@@ -128,9 +128,11 @@ class BasestPaymentForm extends BasestPaymentBaseForm
    */
   public function processTransaction()
   {
-    define('AUTHORIZENET_SANDBOX', sfConfig::get('app_stPayment_sandbox'));
+    if (!defined('AUTHORIZENET_SANDBOX')) {
+      define('AUTHORIZENET_SANDBOX', sfConfig::get('app_stPayment_sandbox'));
+    }
     
-    if (sfConfig::get('sf_logging_enabled')) {
+    if (!defined('AUTHORIZENET_LOG_FILE') && sfConfig::get('sf_logging_enabled')) {
       define('AUTHORIZENET_LOG_FILE', sfConfig::get('sf_log_dir').'/authorizenet_'.sfConfig::get('sf_environment').'.log');
     }
            
@@ -235,6 +237,10 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     $arbRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
     
     $startDate      = $this->getSubscriptionStartDate($trialLengthString);
+    
+    // we should rewrite this so that we create an autnet subscription object, and upon trying to save it
+    // we make the createSubscription api request, and if it success then we continue with the save, otherwise
+    // we return an error
     $subscription   = $this->getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $invoiceNumber);
     
     $response = $arbRequest->createSubscription($subscription);
@@ -395,7 +401,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
   }
       
   /**
-   * Set up subscription details to be passed to the 
+   * Set up subscription details to be passed to the createSubscription API
    *
    * @param string $startDate In the format of Y-m-d
    * @param int $intervalLength in months
