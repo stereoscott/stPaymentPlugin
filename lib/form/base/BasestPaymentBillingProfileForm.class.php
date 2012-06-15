@@ -90,7 +90,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       // API update was good, so what else do we do? 
       // clear pending errors (in action)
       // update authnetsubscription object using $this->subscription
-      $authNetSubscription = $authNetSubscription['AuthNetSubscription'];
+      $authNetSubscription = $this->getAuthNetSubscription($this->getValue('subscription_id'));
 
       $authNetSubscription['bill_to_first_name'] = $this->subscription->billToFirstName;
       $authNetSubscription['bill_to_last_name']  = $this->subscription->billToLastName;         
@@ -99,8 +99,11 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription['bill_to_state']      = $this->subscription->billToState;
       $authNetSubscription['bill_to_zip']        = $this->subscription->billToZip;
       $authNetSubscription['bill_to_contry']     = $this->subscription->billToCountry;
-
       $authNetSubscription->save();
+    } else {
+    	if($this->isError()){//we need to cause an exception to be caught if the response
+    		trigger_error("Update Failed, Recheck Info");//TODO log what error message we recieved?
+    	} else {trigger_error("Something went wrong.");}
     }
   }
   
