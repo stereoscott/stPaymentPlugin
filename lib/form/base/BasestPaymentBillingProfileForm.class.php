@@ -102,8 +102,8 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription->save();
     } else {
     	if($this->isError()){//we need to cause an exception to be caught if the response
-    		trigger_error("Update Failed, Recheck Info");//TODO log what error message we recieved?
-    	} else {trigger_error("Something went wrong.");}
+    		throw new Exception(("Update Failed, Recheck Info");//TODO log what error message we recieved?
+    	} else {throw new Exception("Something went wrong.");}
     }
   }
   
