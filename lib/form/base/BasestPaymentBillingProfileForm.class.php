@@ -77,19 +77,20 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   
   public function save()
   {
-  	use_helper('Debug');
-	log_message('Rechead inside form.save', 'err');
+	sfContext::getInstance()->getLogger()->err('Rechead inside form.save');
     // get our customer subscription object so we know which merchant account to use
+    try{
     $customerSubscription = Doctrine::getTable('CustomerSubscription')
       ->createQuery('cs')
       ->innerJoin('cs.AuthNetSubscription ans')
       ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
       ->fetchOne();
-	if($customerSubscription){log_message('Found Customer Subscription', 'err');} 
-	else {log_message('Failed Finding Customer Subscription', 'err');}
+	if($customerSubscription){sfContext::getInstance()->getLogger()->err('Found Customer Subscription');} 
+	else {sfContext::getInstance()->getLogger()->err('Failed Finding Customer Subscription');}
+	} catch (Exception $e){sfContext::getInstance()->getLogger()->err('Fatal Error Finding Customer Subscription'.$e->getMessage,'err');}
       
     $this->initMerchantAccountCredentials($customerSubscription);
-	log_message('Got Credentials', 'err');
+	sfContext::getInstance()->getLogger()->err('Got Credentials');
     
     if ($this->processUpdate()) {
       // API update was good, so what else do we do? 
@@ -107,10 +108,10 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription->save();
     } else {
     	if($this->isError()){//we need to cause an exception to be caught if the response
-    		log_message('Found an Error when Saving', 'err');
+    		sfContext::getInstance()->getLogger()->err('Found an Error when Saving');
     		throw new Exception("Update Failed, Recheck Info");//TODO log what error message we recieved?
     	} else {
-    		log_message('Updated failed with No Errors', 'err');
+    		sfContext::getInstance()->getLogger()->err('Updated failed with No Errors');
     		throw new Exception("Something went wrong.");}
     }
   }
