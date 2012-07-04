@@ -78,14 +78,18 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   public function save()
   {
   	use_helper('Debug');
+	log_message('Rechead inside form.save', 'err');
     // get our customer subscription object so we know which merchant account to use
     $customerSubscription = Doctrine::getTable('CustomerSubscription')
       ->createQuery('cs')
       ->innerJoin('cs.AuthNetSubscription ans')
       ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
       ->fetchOne();
+	if($customerSubscription){log_message('Found Customer Subscription', 'err');} 
+	else {log_message('Failed Finding Customer Subscription', 'err');}
       
     $this->initMerchantAccountCredentials($customerSubscription);
+	log_message('Got Credentials', 'err');
     
     if ($this->processUpdate()) {
       // API update was good, so what else do we do? 
