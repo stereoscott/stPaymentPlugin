@@ -102,8 +102,11 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription->save();
     } else {
     	if($this->isError()){//we need to cause an exception to be caught if the response
+    		$this->logMessage('Found an Error when Saving', 'err');
     		throw new Exception("Update Failed, Recheck Info");//TODO log what error message we recieved?
-    	} else {throw new Exception("Something went wrong.");}
+    	} else {
+    		$this->logMessage('Updated failed with No Errors', 'err');
+    		throw new Exception("Something went wrong.");}
     }
   }
   
