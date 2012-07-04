@@ -77,6 +77,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   
   public function save()
   {
+  	use_helper('Debug');
     // get our customer subscription object so we know which merchant account to use
     $customerSubscription = Doctrine::getTable('CustomerSubscription')
       ->createQuery('cs')
@@ -102,10 +103,10 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription->save();
     } else {
     	if($this->isError()){//we need to cause an exception to be caught if the response
-    		$this->logMessage('Found an Error when Saving', 'err');
+    		log_message('Found an Error when Saving', 'err');
     		throw new Exception("Update Failed, Recheck Info");//TODO log what error message we recieved?
     	} else {
-    		$this->logMessage('Updated failed with No Errors', 'err');
+    		log_message('Updated failed with No Errors', 'err');
     		throw new Exception("Something went wrong.");}
     }
   }
