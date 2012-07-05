@@ -140,10 +140,15 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
    */
   protected function processUpdate()
   {
+  	sfContext::getInstance()->getLogger()->err('Process Update 1');
     $processor = $this->getPaymentProcessor();
-    $updateRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());    
+	sfContext::getInstance()->getLogger()->err('Process Update 2');
+    $updateRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
+	sfContext::getInstance()->getLogger()->err('Process Update 3');    
     $this->subscription = $this->getAuthNetSubscriptionApiObject();
+	sfContext::getInstance()->getLogger()->err('Process Update 4');
     $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
+	sfContext::getInstance()->getLogger()->err('Process Update 5');
   
     return $updateResponse->isOk();
   }  
