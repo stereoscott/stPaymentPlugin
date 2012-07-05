@@ -109,6 +109,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription->save();
 	  sfContext::getInstance()->getLogger()->err('Saved Subscription');
     } else {
+    	sfContext::getInstance()->getLogger()->err('processUpdate returned false');
     	if($this->isError()){//we need to cause an exception to be caught if the response
     		sfContext::getInstance()->getLogger()->err('Found an Error when Saving');
     		throw new Exception("Update Failed, Recheck Info");//TODO log what error message we recieved?
