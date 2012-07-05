@@ -109,9 +109,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription->save();
 	  sfContext::getInstance()->getLogger()->err('Saved Subscription');
     } else {
-    	sfContext::getInstance()->getLogger()->err('processUpdate returned false');
-    	if($this->isError()){//we need to cause an exception to be caught if the response
-    		sfContext::getInstance()->getLogger()->err('Found an Error when Saving');
+    	sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
+    	if($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
+    		sfContext::getInstance()->getLogger()->err('Found an Error when Saving: '.$this->updateResponse->getErrorMessage());
     		throw new Exception("Update Failed, Recheck Info");//TODO log what error message we recieved?
     	} else {
     		sfContext::getInstance()->getLogger()->err('Updated failed with No Errors');
@@ -151,7 +151,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	sfContext::getInstance()->getLogger()->err('Process Update 4 - Got Status'.$updateRequest->getSubscriptionStatus($this->getValue('subscription_id'))->xml);    
     $this->subscription = $this->getAuthNetSubscriptionApiObject();
 	sfContext::getInstance()->getLogger()->err('Process Update 5');
-    $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
+    $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
 	sfContext::getInstance()->getLogger()->err('Process Update Complete, Response Code: '.$updateResponse->getResultCode());
 	sfContext::getInstance()->getLogger()->err('Process Update Complete, Response: '.$updateResponse->xml);
   
