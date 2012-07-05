@@ -151,7 +151,10 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	//sfContext::getInstance()->getLogger()->err('Process Update 4 - Got Status'.$updateRequest->getSubscriptionStatus($this->getValue('subscription_id'))->getErrorMessage());    
     $this->subscription = $this->getAuthNetSubscriptionApiObject();
 	sfContext::getInstance()->getLogger()->err('Process Update 5, Sandbox set to: '.(defined('AUTHORIZENET_SANDBOX') ? AUTHORIZENET_SANDBOX : 'not_defined!'));
-	$updateRequest->setSandbox(false);
+	if(sfConfig::get('sf_environment') == 'prod'){
+		$updateRequest->setSandbox(false);
+		sfContext::getInstance()->getLogger()->err('Production Environment, Setting Sandbox to false');
+	}
     $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
 	sfContext::getInstance()->getLogger()->err('Process Update Complete, Response Code: '.$updateResponse->getResultCode());
 	sfContext::getInstance()->getLogger()->err('Process Update Complete, Request: '.$updateRequest->getPostString());
