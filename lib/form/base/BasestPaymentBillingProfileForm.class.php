@@ -147,11 +147,13 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     $processor = $this->getPaymentProcessor();
 	sfContext::getInstance()->getLogger()->err('Process Update 2');
     $updateRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
-	sfContext::getInstance()->getLogger()->err('Process Update 3');    
+	sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request');
+	sfContext::getInstance()->getLogger()->err('Process Update 4 - Got Status'.$updateRequest->getSubscriptionStatus($this->getValue('subscription_id'))->xml);    
     $this->subscription = $this->getAuthNetSubscriptionApiObject();
-	sfContext::getInstance()->getLogger()->err('Process Update 4');
-    $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
 	sfContext::getInstance()->getLogger()->err('Process Update 5');
+    $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
+	sfContext::getInstance()->getLogger()->err('Process Update Complete, Response Code: '.$updateResponse->getResultCode());
+	sfContext::getInstance()->getLogger()->err('Process Update Complete, Response: '.$updateResponse->xml);
   
     return $updateResponse->isOk();
   }  
