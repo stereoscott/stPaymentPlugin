@@ -105,7 +105,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription['bill_to_state']      = $this->subscription->billToState;
       $authNetSubscription['bill_to_zip']        = $this->subscription->billToZip;
       $authNetSubscription['bill_to_contry']     = $this->subscription->billToCountry;
+	  sfContext::getInstance()->getLogger()->err('Trying to Save Subscription');
       $authNetSubscription->save();
+	  sfContext::getInstance()->getLogger()->err('Saved Subscription');
     } else {
     	if($this->isError()){//we need to cause an exception to be caught if the response
     		sfContext::getInstance()->getLogger()->err('Found an Error when Saving');
