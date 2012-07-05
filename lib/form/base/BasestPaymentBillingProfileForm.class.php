@@ -77,6 +77,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   
   public function save()
   {
+  	$this->dBg = false;
 	sfContext::getInstance()->getLogger()->err('Rechead inside form.save');
     // get our customer subscription object so we know which merchant account to use
     try{
@@ -85,12 +86,12 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       ->innerJoin('cs.AuthNetSubscription ans')
       ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
       ->fetchOne();
-	if($customerSubscription){sfContext::getInstance()->getLogger()->err('Found Customer Subscription');} 
-	else {sfContext::getInstance()->getLogger()->err('Failed Finding Customer Subscription');}
-	} catch (Exception $e){sfContext::getInstance()->getLogger()->err('Fatal Error Finding Customer Subscription'.$e->getMessage,'err');}
+	if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->err('Found Customer Subscription'):null;} 
+	else {$this->dBg?sfContext::getInstance()->getLogger()->err('Failed Finding Customer Subscription'):null;}
+	} catch (Exception $e){$this->dBg?sfContext::getInstance()->getLogger()->err('Fatal Error Finding Customer Subscription'.$e->getMessage,'err'):null;}
       
     $this->initMerchantAccountCredentials($customerSubscription);
-	sfContext::getInstance()->getLogger()->err('Got Credentials');
+	$this->dBg?sfContext::getInstance()->getLogger()->err('Got Credentials'):null;
     
     if ($this->processUpdate()) {
       // API update was good, so what else do we do? 
@@ -105,16 +106,16 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $authNetSubscription['bill_to_state']      = $this->subscription->billToState;
       $authNetSubscription['bill_to_zip']        = $this->subscription->billToZip;
       $authNetSubscription['bill_to_country']     = $this->subscription->billToCountry;
-	  sfContext::getInstance()->getLogger()->err('Trying to Save Subscription');
+	  $this->dBg?sfContext::getInstance()->getLogger()->err('Trying to Save Subscription'):null;
       $authNetSubscription->save();
-	  sfContext::getInstance()->getLogger()->err('Saved Subscription');
+	  //sfContext::getInstance()->getLogger()->err('Saved Subscription');
     } else {
-    	sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
+    	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
     	if($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
-    		sfContext::getInstance()->getLogger()->err('Found an Error when Saving: '.$this->updateResponse->getErrorMessage());
+    		$this->dBg?sfContext::getInstance()->getLogger()->err('Found an Error when Saving: '.$this->updateResponse->getErrorMessage()):null;
     		throw new Exception("Update Failed, Recheck Info");//TODO log what error message we recieved?
     	} else {
-    		sfContext::getInstance()->getLogger()->err('Updated failed with No Errors');
+    		$this->dBg?sfContext::getInstance()->getLogger()->err('Updated failed with No Errors'):null;
     		throw new Exception("Something went wrong.");}
     }
   }
@@ -143,21 +144,20 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
    */
   protected function processUpdate()
   {
-  	sfContext::getInstance()->getLogger()->err('Process Update 1');
+  	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 1'):null;
     $processor = $this->getPaymentProcessor();
-	sfContext::getInstance()->getLogger()->err('Process Update 2');
+	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 2'):null;
     $updateRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
-	sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request');
-	//sfContext::getInstance()->getLogger()->err('Process Update 4 - Got Status'.$updateRequest->getSubscriptionStatus($this->getValue('subscription_id'))->getErrorMessage());    
+	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request'):null;
     $this->subscription = $this->getAuthNetSubscriptionApiObject();
-	sfContext::getInstance()->getLogger()->err('Process Update 5, Sandbox set to: '.(defined('AUTHORIZENET_SANDBOX') ? AUTHORIZENET_SANDBOX : 'not_defined!'));
+	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 4, Sandbox set to: '.(defined('AUTHORIZENET_SANDBOX') ? AUTHORIZENET_SANDBOX : 'not_defined!')):null;
 	if(sfConfig::get('sf_environment') == 'prod'){
 		$updateRequest->setSandbox(false);
-		sfContext::getInstance()->getLogger()->err('Production Environment, Setting Sandbox to false');
+		$this->dBg?sfContext::getInstance()->getLogger()->err('Production Environment, Setting Sandbox to false'):null;
 	}
     $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
-	sfContext::getInstance()->getLogger()->err('Process Update Complete, Response Code: '.$updateResponse->getResultCode());
-	sfContext::getInstance()->getLogger()->err('Process Update Complete, Request: '.$updateRequest->getPostString());
+	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update Complete, Response Code: '.$updateResponse->getResultCode()):null;
+	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update Complete, Request: '.$updateRequest->getPostString()):null;
   
     return $updateResponse->isOk();
   }  
