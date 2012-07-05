@@ -78,7 +78,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   public function save()
   {
   	$this->dBg = false;
-	sfContext::getInstance()->getLogger()->err('Rechead inside form.save');
+	$this->dBg?sfContext::getInstance()->getLogger()->err('Rechead inside form.save'):null;
     // get our customer subscription object so we know which merchant account to use
     try{
     $customerSubscription = Doctrine::getTable('CustomerSubscription')
