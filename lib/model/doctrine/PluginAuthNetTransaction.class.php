@@ -33,6 +33,23 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
     return $this['response_code'] == AuthorizeNetResponse::HELD;
   }
   
+  public function getAuthNetSubscription()
+  {
+  	$existingSub = Doctrine::getTable('AuthNetSubscription')->createQuery('a')
+        ->where('a.transaction_id = ?', $this->subscription_id)
+		->leftJoin('CustomerSubscription cs ON cs.auth_net_subscription_id = a.id')
+        ->orderBy('a.created_at ASC') // put oldest (smallest) at the top of the result set
+        ->fetchOne();
+		
+	if($existingSub){
+		return $existingSub;
+	} else {
+		sfContext::getInstance()->getLogger()->crit('Unknown AuthNetSubscription for transaction with subscription_id: '.$this->subscription_id);
+		throw new Exception('Unknown AuthNetSubscription for transaction with subscription_id: '.$this->subscription_id);
+		return false;
+	}
+  }
+  
   public static function fromSilentPost(stAuthorizeNetSilentPostResponse $response) 
   {
     $transaction = new AuthNetTransaction();
