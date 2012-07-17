@@ -179,6 +179,23 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
     }
   }
   
+  public function cancelSubscription(&$error = false){
+    $processor = $this->getPaymentProcessor();
+    
+    $arbRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
+    
+    $response = $arbRequest->cancelSubscription($this->getSubscriptionId());
+  
+    if ($response->isOk()) {
+      $this->setStatus($response->getSubscriptionStatus());
+      $this->save();
+      return true;
+    } else {
+      $error = $response->getErrorMessage();
+      return false;
+    }
+  }
+  
 
     
   public function doApiUpdate(&$error = false, $additionalFields = null)
