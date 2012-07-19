@@ -195,9 +195,7 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
       return false;
     }
   }
-  
 
-    
   public function doApiUpdate(&$error = false, $additionalFields = null)
   {
     $processor = $this->getPaymentProcessor();

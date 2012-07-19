@@ -33,12 +33,13 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
     return $this['response_code'] == AuthorizeNetResponse::HELD;
   }
   
-  public function getAuthNetSubscription()
+  public function retrieveANS()
   {
   	$existingSub = Doctrine::getTable('AuthNetSubscription')->createQuery('a')
-        ->where('a.transaction_id = ?', $this->subscription_id)
-		->leftJoin('CustomerSubscription cs ON cs.auth_net_subscription_id = a.id')
-        ->orderBy('a.created_at ASC') // put oldest (smallest) at the top of the result set
+        ->where('a.subscription_id = ?', $this->subscription_id)
+		//->andWhere('a.id IN (SELECT cs.auth_net_subscription_id FROM customer_subscription AS cs WHERE cs')
+		//->leftJoin('CustomerSubscription cs ON cs.auth_net_subscription_id = a.id')
+        ->orderBy('a.created_at DESC') // put newest (smallest) at the top of the result set
         ->fetchOne();
 		
 	if($existingSub){
