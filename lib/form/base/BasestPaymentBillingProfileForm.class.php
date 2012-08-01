@@ -43,6 +43,17 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     $this->setOption('customer', $customer);
   }
   
+  public function setChargedBalance($amount)
+  {
+    $this->setOption('amount', $amount);
+  }
+  
+  public function getChargedBalance($amount)
+  {
+    $this->getOption('amount');
+  }
+  
+  
   public function initDefaultsWithAuthNetSubscription(AuthNetSubscription $authNetSubscription)
   {
     $this->setAuthNetSubscription($authNetSubscription);
@@ -81,19 +92,19 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	$this->dBg?sfContext::getInstance()->getLogger()->err('Rechead inside form.save'):null;
     // get our customer subscription object so we know which merchant account to use
     try{
-    $customerSubscription = Doctrine::getTable('CustomerSubscription')
-      ->createQuery('cs')
-      ->innerJoin('cs.AuthNetSubscription ans')
-      ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
-      ->fetchOne();
-	if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->err('Found Customer Subscription'):null;} 
-	else {$this->dBg?sfContext::getInstance()->getLogger()->err('Failed Finding Customer Subscription'):null;}
+	    $customerSubscription = Doctrine::getTable('CustomerSubscription')
+	      ->createQuery('cs')
+	      ->innerJoin('cs.AuthNetSubscription ans')
+	      ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
+	      ->fetchOne();
+		if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->err('Found Customer Subscription'):null;} 
+		else {$this->dBg?sfContext::getInstance()->getLogger()->err('Failed Finding Customer Subscription'):null;}
 	} catch (Exception $e){$this->dBg?sfContext::getInstance()->getLogger()->err('Fatal Error Finding Customer Subscription'.$e->getMessage,'err'):null;}
       
     $this->initMerchantAccountCredentials($customerSubscription);
 	$this->dBg?sfContext::getInstance()->getLogger()->err('Got Credentials'):null;
     
-    if ($this->processUpdate()) {
+    if ($this->processUpdate($customerSubscription)) {
       // API update was good, so what else do we do? 
       // clear pending errors (in action)
       // update authnetsubscription object using $this->subscription
@@ -111,13 +122,35 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	  //sfContext::getInstance()->getLogger()->err('Saved Subscription');
     } else {
     	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
-    	if($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
-    		$this->dBg?sfContext::getInstance()->getLogger()->err('Found an Error when Saving: '.$this->updateResponse->getErrorMessage()):null;
-    		throw new Exception("Update Failed, Recheck Info");//TODO log what error message we recieved?
+    	//TODO add a check against the rebilling error process to this if
+		if(isset($this->billResponse) && $this->billResponse->isError()){
+			$this->dBg?sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->getErrorMessage()):null;
+    		throw new Exception("Update Failed, Recheck Info");
+		}elseif($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
+    		$this->dBg?sfContext::getInstance()->getLogger()->err('Found an Error when Updating AuthNet: '.$this->updateResponse->getErrorMessage()):null;
+    		throw new Exception("Update Failed, Recheck Info");
     	} else {
     		$this->dBg?sfContext::getInstance()->getLogger()->err('Updated failed with No Errors'):null;
     		throw new Exception("Something went wrong.");}
     }
+  }
+  protected function getAuthNetAIMBillingApiObject()
+  {
+  	$fields = $this->getTransactionFields();
+    $transaction = new AuthorizeNetAIM();
+	$ccExpirationDate = strtotime($this->getValue('exp'));//TODO fix
+    $transaction->setField('card_num',		$fields['card_num']);//TODO fix
+    $transaction->setField('exp_date',		date('Y-m', $ccExpirationDate));
+    $transaction->setField('card_code',		$fields['card_code']);    
+    $transaction->setField('first_name',	$fields['first_name']);
+    $transaction->setField('last_name',		$fields['last_name']);
+    $transaction->setField('address',		$fields['address']);
+    $transaction->setField('city',			$fields['city']);
+    $transaction->setField('state',			substr($fields['state'], 0, 2)); // ARB requires 2 char state
+    $transaction->setField('zip',			$fields['zip']);
+    $transaction->setField('country',		$fields['country']);
+
+    return $transaction;
   }
   
   protected function getAuthNetSubscriptionApiObject()
@@ -142,23 +175,96 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   /**
    * We should refactor these form methods with the methods found in the AuthNetSubscription model.
    */
-  protected function processUpdate()
+  protected function processUpdate($subscription)
   {
+  	$billRequest = false; //this stays false so we don't try to bill people who haven't missed
   	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 1'):null;
+	
     $processor = $this->getPaymentProcessor();
 	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 2'):null;
+	
+	//get the request
     $updateRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
+	//TODO check for back bills and charge them
+	if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->countMissedPayements()){
+		$billRequest = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
+	}
+	
 	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request'):null;
+	
+    //get the api objects
     $this->subscription = $this->getAuthNetSubscriptionApiObject();
+	$this->transaction = $billRequest?$this->getAuthNetAIMBillingApiObject():false;
 	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 4, Sandbox set to: '.(defined('AUTHORIZENET_SANDBOX') ? AUTHORIZENET_SANDBOX : 'not_defined!')):null;
+	
 	if(sfConfig::get('sf_environment') == 'prod'){
 		$updateRequest->setSandbox(false);
 		$this->dBg?sfContext::getInstance()->getLogger()->err('Production Environment, Setting Sandbox to false'):null;
 	}
+	
+	if($billRequest && $this->transaction){
+		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
+		if(!$billResponse->isOk()){
+			return false;//if the billing fails, there was a problem with the card and we should stop processing.
+		}else{
+			//first get all the transaction errors
+			$errors=$subscription->retrieveMissedPayments();
+			$this->setChargedBalance($amount);
+			
+			//then get the original purchase
+			$purchase = $subscription->getPurchase();
+			if(!$purchase || !is_object($purchase)){//try this if a the other retrieval fails because there are inconsitencies in some older records
+				try{
+				      $existingPurchase = Doctrine::getTable('Purchase')->createQuery('p')
+				        ->where('p.transaction_id = ?', $response->subscription_id)
+				        ->orderBy('p.created_at ASC') // put oldest (smallest) at the top of the result set
+				        ->fetchOne();
+				} catch(Exception $e) {
+				      sfContext::getInstance()->getLogger()->crit('Could not retrieve old Purchase. Error: '.$e->getMessage());
+				}
+			}
+			
+			
+			//then if it's monthly, check the the paynum on all the transaction errors
+			$isRenewal=false;
+			if($purchase->isYearly()){
+				$isRenewal=true;
+			}elseif($purchase->isMonthly() && $subscription->isMonthlyRenewalMissedPayments()){
+				$isRenewal=true;
+			}
+			//if we have a renewal
+			if($isRenewal){
+				$fields = $this->getTransactionFields();
+				//we should generate the new purchase
+				$newPurchase = $purchase->generatePurchase(array(
+			      'bill_first_name'     => $fields['first_name'],
+			      'bill_last_name'      => $fields['last_name'], 
+			      'bill_street'         => $fields['address'],   
+			      'bill_street_2'       => null,                 
+			      'bill_city'           => $fields['city'],      
+			      'bill_region'         => substr($fields['state'], 0, 2),     
+			      'bill_region_other'   => $fields['zip'],  
+			      'bill_country'        => $fields['country'],   
+		  		));
+				
+				// we should run the renewal from that purchase
+				$purchase->processRenewal($newPurchase, sfContext::getInstance());
+				
+				// we should send the renewal email
+				$this->getCustomer()->sendRenewalEmail();
+				
+			}//END OF if($isRenewal)
+			// we should clear the transaction errors
+			$subscription->markMissedPaymentsProcessed();
+		}//END OF else OF if(!$billResponse->isOk())
+	}
+	
+	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
     $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
 	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update Complete, Response Code: '.$updateResponse->getResultCode()):null;
 	$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update Complete, Request: '.$updateRequest->getPostString()):null;
   
+  	//This check to see if we need the Bill Response to be OK and then returns it.
     return $updateResponse->isOk();
   }  
   
