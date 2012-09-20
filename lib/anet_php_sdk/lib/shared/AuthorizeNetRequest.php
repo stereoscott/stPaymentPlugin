@@ -108,8 +108,9 @@ abstract class AuthorizeNetRequest
                 file_put_contents($this->_log_file, "----CURL ERROR----\n$curl_error\n\n", FILE_APPEND);
             }
             
+			//TODO run a string replace on the request before logging it if we are in the cloud or prod environment
             // Do not log requests that could contain CC info.
-            if (sfConfig::get('sf_environment') != 'prod') {
+            if ((sfConfig::get('sf_environment')) != 'cloud'  && (sfConfig::get('sf_environment') != 'prod')) {
               file_put_contents($this->_log_file, "----Request----\n{$this->_post_string}\n", FILE_APPEND);
             }
             
