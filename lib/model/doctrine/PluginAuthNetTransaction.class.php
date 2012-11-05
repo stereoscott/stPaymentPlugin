@@ -33,6 +33,23 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
     return $this['response_code'] == AuthorizeNetResponse::HELD;
   }
   
+  public function configureMerchantAccountId($value){
+    if(1 == $value):
+      $this['merchant_account_id'] = $value;
+    else:
+      $query = Doctrine::getTable('MerchantAccount')
+        ->createQuery('m')
+        ->select('m.id')
+        ->where('m.config_key = ?',$value);
+      $result = $query->fetchOne(array(), Doctrine_Core::HYDRATE_SCALAR);
+      sfContext::getInstance()->getLogger()->debug('About to set to '.$result['m_id'].' setMerchantAccountId in PluginAuthNetTransaction');
+      $this->merchant_account_id = $result['m_id'];
+      sfContext::getInstance()->getLogger()->debug('About to unset query in PluginAuthNetTransaction');
+      $query->free();
+      unset($query);
+    endif;
+  }
+  
   public function retrieveANS()
   {
   	$existingSub = Doctrine::getTable('AuthNetSubscription')->createQuery('a')
