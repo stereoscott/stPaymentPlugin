@@ -186,7 +186,7 @@ class BasestPaymentForm extends sfForm
       define('AUTHORIZENET_LOG_FILE', sfConfig::get('sf_log_dir').'/authorizenet_'.sfConfig::get('sf_environment').'.log');
     }
         
-    if ($trialLength = $this->getTrialPeriod()) {
+    if ($trialLength = $this->getTrialPeriod()) {//this should not trigger on the SB site
       if ($trialAmount = $this->getAmount()) { // amount of first charge
         $response = $this->authorizeCaptureAndSubscribe($trialAmount, $this->getAmountAfterTrial(), $trialLength.' days');
       } else { // free trial
@@ -194,12 +194,14 @@ class BasestPaymentForm extends sfForm
       }
     } else { // no trial period
       $paymentPeriod = $this->getPaymentPeriod();
-      if ($paymentPeriod == 'single') {
+      if ($paymentPeriod == 'single' || $paymentPeriod == 'yearly') {
         $response = $this->authorizeAndCapture($this->getAmount());
-      } else {
+      } elseif ($paymentPeriod == 'monthly'){
         // process a 'paid' trial with the first trial period equal to the payment term
-        $trialLength = ($paymentPeriod == 'yearly') ? '1 year' : '1 month';
-        $response = $this->authorizeCaptureAndSubscribe($this->getAmount(), $this->getAmount(), $trialLength);
+        //$trialLength = ($paymentPeriod == 'yearly') ? '1 year' : '1 month';
+        //Note: We no longer allow recuring billing longer than a year to be setup for new customer because AIG doesn't like auto-renewals
+        $totalOccurances = '11';//since we're charging the first month automatically.
+        $response = $this->authorizeCaptureAndSubscribe($this->getAmount(), $this->getAmount(), $trialLength, $totalOccurances);
       }
     }
         
@@ -219,13 +221,13 @@ class BasestPaymentForm extends sfForm
    * @param string $recurringStartDate in 'x days', or '1 year' or '1 month'
    * @return mixed AuthorizeNetARB_Response or AuthorizeNetAIM_Response
    */
-  protected function authorizeCaptureAndSubscribe($firstAmount, $recurringAmount, $recurringStartDate)
+  protected function authorizeCaptureAndSubscribe($firstAmount, $recurringAmount, $recurringStartDate, $totalOccurances='9999')
   {
     $response = $this->authorizeAndCapture($firstAmount);
 
     if ($response->approved) {  
     
-      $arbResponse = $this->processRecurringTransaction($recurringAmount, $recurringStartDate, null, $response->transaction_id);
+      $arbResponse = $this->processRecurringTransaction($recurringAmount, $recurringStartDate, null, $response->transaction_id, $totalOccurances);
       
       if (!$arbResponse->isOk()) 
       {
@@ -246,14 +248,14 @@ class BasestPaymentForm extends sfForm
    * @param string $amountAfterTrial recurring / ARB amount
    * @return mixed AuthorizeNetARB_Response or AuthorizeNetAIM_Response
    */
-  protected function authorizeVoidAndSubscribe($trialLengthString, $amountAfterTrial)
+  protected function authorizeVoidAndSubscribe($trialLengthString, $amountAfterTrial, $totalOccurances = "9999")
   {
     // authorize regular amount
     $response = $this->authorizeOnly($amountAfterTrial);
     
     if ($response->approved) {
       $this->processVoid($response->transaction_id);
-      $arbResponse = $this->processRecurringTransaction($amountAfterTrial, $trialLengthString, null, $response->transaction_id);
+      $arbResponse = $this->processRecurringTransaction($amountAfterTrial, $trialLengthString, null, $response->transaction_id, $totalOccurances);
       
       return $arbResponse;
     } else {
@@ -271,7 +273,7 @@ class BasestPaymentForm extends sfForm
    * @param int $intervalLength in months
    * @return @see AuthorizeNetARB::createSubscription()
    */
-  protected function processRecurringTransaction($amount, $trialLengthString, $intervalLength = null, $invoiceNumber = null)
+  protected function processRecurringTransaction($amount, $trialLengthString, $intervalLength = null, $invoiceNumber = null, $totalOccurances = "9999")
   {
     if (null === $intervalLength) {
       $intervalLength = ($this->getPaymentPeriod() == 'yearly') ? 12 : 1; // in months
@@ -400,7 +402,7 @@ class BasestPaymentForm extends sfForm
    * @param string $amount In the format of "000.00"
    * @return AuthorizeNet_Subscription $subscription
    */
-  protected function getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $defaultInvoiceNumber = null)
+  protected function getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $defaultInvoiceNumber = null, $totalOccurances = "9999")
   {
     $subscription = new AuthorizeNet_Subscription;
     
@@ -410,7 +412,7 @@ class BasestPaymentForm extends sfForm
     $subscription->amount           = $amount;
     $subscription->intervalLength   = $intervalLength;
     $subscription->intervalUnit     = 'months';    
-    $subscription->totalOccurrences = "9999";
+    $subscription->totalOccurrences = $totalOccurances;
     
     $fields = $this->getTransactionFields();
     
