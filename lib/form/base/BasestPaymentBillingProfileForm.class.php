@@ -20,6 +20,11 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     
     $this->widgetSchema->setHelp('fname', null);
     $this->widgetSchema->setNameFormat('payment[%s]');
+    try{
+      throw new Exception('Manual Error in set of BaststPaymentBillingProfileForm');
+    } catch (Exception $e){
+      sfContext::getInstance()->getLogger()->debug($e->getTraceAsString());
+    }
   }
   
   public function validateSubscriptionId($validator, $value)
@@ -117,9 +122,10 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         $authNetSubscription['bill_to_state']      = $this->subscription->billToState;
         $authNetSubscription['bill_to_zip']        = $this->subscription->billToZip;
         $authNetSubscription['bill_to_country']     = $this->subscription->billToCountry;
-  	    $this->dBg?sfContext::getInstance()->getLogger()->err('Trying to Save Subscription'):null;
+  	    //$this->dBg?sfContext::getInstance()->getLogger()->debug('Trying to Save Subscription'):null;
         $authNetSubscription->save();
-  	  //sfContext::getInstance()->getLogger()->err('Saved Subscription');
+        //
+  	  //sfContext::getInstance()->getLogger()->debug('Saved Subscription');
       } else {
       	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
       	//TODO add a check against the rebilling error process to this if

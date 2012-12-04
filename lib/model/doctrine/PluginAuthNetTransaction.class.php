@@ -12,6 +12,12 @@
  */
 abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
 {
+  public function getGrandTotal(){
+    return (int) ($this->getAmount()?$this->getAmount():0) + 
+           (int) ($this->getFreight()?$this->getFreight():0) +
+           (int) ($this->getDuty()?$this->getDuty():0) + 
+           (int) ($this->getTax()?$this->getTax():0);
+  }
   
   public function isApproved()
   {
