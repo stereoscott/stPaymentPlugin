@@ -148,10 +148,10 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       }
     }
   }
-  protected function getAuthNetAIMBillingApiObject()
+  protected function getAuthNetAIMBillingApiObject($transaction = null)
   {
   	$fields = $this->getTransactionFields();
-    $transaction = new AuthorizeNetAIM();
+    if($transaction) $transaction = new AuthorizeNetAIM();
 	  $ccExpirationDate = strtotime($this->getValue('exp'));//TODO fix
     $transaction->setField('card_num',		$fields['card_num']);//TODO fix
     $transaction->setField('exp_date',		date('Y-m', $ccExpirationDate));
@@ -197,27 +197,28 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     $processor = $this->getPaymentProcessor();
 	  //$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 2'):null;
 	
-	  //get the request
+	  //get the Auth.net object and the API object we pass to it
     $updateRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
-	  //check for back bills and charge them
+    $this->subscription = $this->getAuthNetSubscriptionApiObject($updateRequest);
+    
+	  //check for back bills and settup a new AIM request so we can bill.
 	  if(($amount = $subscription->totalMissedPayments()) && $amount > 0){
 		  $billRequest = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
+      $billRequest = $this->getAuthNetAIMBillingApiObject($billRequest);
       sfContext::getInstance()->getLogger()->debug('billRequest successfully set in processUpdate of BasestPaymentBillingProfileForm for amount: '.$amount);
 	  }
 	
 	  //$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request'):null;
 	
-    //get the api objects
-    $this->subscription = $this->getAuthNetSubscriptionApiObject();
-  	$this->transaction = $billRequest?$this->getAuthNetAIMBillingApiObject():false;
   	//$this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update 4, Sandbox set to: '.(defined('AUTHORIZENET_SANDBOX') ? AUTHORIZENET_SANDBOX : 'not_defined!')):null;
   	
   	if(sfConfig::get('sf_environment') == 'prod'){
   		$updateRequest->setSandbox(false);
+      $billRequest->setSandbox(false);
   		//$this->dBg?sfContext::getInstance()->getLogger()->debug('Production Environment, Setting Sandbox to false'):null;
   	}
   	
-  	if($billRequest && $this->transaction){
+  	if($billRequest){
   		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
   		if(!$billResponse->isOk()){
   			return false;//if the billing fails, there was a problem with the card and we should stop processing.
@@ -273,7 +274,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			$subscription->markMissedPaymentsProcessed();
   		}//END OF else OF if(!$billResponse->isOk())
   	} else {
-  	  sfContext::getInstance()->getLogger()->debug('if($billRequest && $this->transaction) returned false in processUpdate of BasestPaymentBillingProfileForm');
+  	  sfContext::getInstance()->getLogger()->debug('if($billRequest && $this->transaction) returned false because '.($billRequest?'The transaction was not set':'$billRequest was false').' in processUpdate of BasestPaymentBillingProfileForm');
     }
   	
   	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
