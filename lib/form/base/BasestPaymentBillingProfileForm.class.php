@@ -199,7 +199,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	
 	  //get the Auth.net object and the API object we pass to it
     $updateRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
-    $this->subscriptionApiObject = $this->getAuthNetSubscriptionApiObject($updateRequest);
+    $this->subscriptionApiObject = $this->getAuthNetSubscriptionApiObject();
+    
+    sfContext::getInstance()->getLogger()->debug('Got a test amount of: '.$subscription->totalMissedPayments().' in processUpdate of BasestPaymentBillingProfileForm');
     
 	  //check for back bills and settup a new AIM request so we can bill.
 	  if(($amount = $subscription->totalMissedPayments()) && $amount > 0){
