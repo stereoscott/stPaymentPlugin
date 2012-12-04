@@ -122,18 +122,19 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         $authNetSubscription['bill_to_state']      = $this->subscription->billToState;
         $authNetSubscription['bill_to_zip']        = $this->subscription->billToZip;
         $authNetSubscription['bill_to_country']     = $this->subscription->billToCountry;
-  	    //$this->dBg?sfContext::getInstance()->getLogger()->debug('Trying to Save Subscription'):null;
+  	    $this->dBg?sfContext::getInstance()->getLogger()->debug('Trying to Save Subscription'):null;
         $authNetSubscription->save();
+        sfContext::getInstance()->getLogger()->debug('Subscription saved.');
         //
   	  //sfContext::getInstance()->getLogger()->debug('Saved Subscription');
       } else {
       	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
       	//TODO add a check against the rebilling error process to this if
     		if(isset($this->billResponse) && $this->billResponse->isError()){
-    			  sfContext::getInstance()->getLogger()->crit('Found an Error when Billing AuthNet: '.$this->updateResponse->getErrorMessage());
+    			  sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->getErrorMessage());
         		throw new Exception("Update Failed, Recheck Info");
     		}elseif($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
-        		sfContext::getInstance()->getLogger()->err('Found an Error when Updating AuthNet: '.$this->updateResponse->getErrorMessage());
+        		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->getErrorMessage());
         		throw new Exception("Update Failed, Recheck Info");
         } else {
         		sfContext::getInstance()->getLogger()->crit('Updated failed with No Errors');
@@ -201,6 +202,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	  //check for back bills and charge them
 	  if(($amount = $subscription->totalMissedPayments()) && $amount > 0){
 		  $billRequest = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
+      sfContext::getInstance()->getLogger()->debug('billRequest successfully set in processUpdate of BasestPaymentBillingProfileForm for amount: '.$amount);
 	  }
 	
 	  //$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request'):null;
@@ -230,7 +232,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   				try{
   				      $existingPurchase = Doctrine::getTable('Purchase')->createQuery('p')
   				        ->where('p.transaction_id = ?', $response->subscription_id)
-  				        ->orderBy('p.created_at ASC') // put oldest (smallest) at the top of the result set
+  				        ->orderBy('p.created_at DESC') // put newest (biggest date) at the top of the result set
   				        ->fetchOne();
   				} catch(Exception $e) {
   				      sfContext::getInstance()->getLogger()->crit('Could not retrieve old Purchase. Error: '.$e->getMessage());
@@ -270,7 +272,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			// we should clear the transaction errors
   			$subscription->markMissedPaymentsProcessed();
   		}//END OF else OF if(!$billResponse->isOk())
-  	}
+  	} else {
+  	  sfContext::getInstance()->getLogger()->debug('if($billRequest && $this->transaction) returned false in processUpdate of BasestPaymentBillingProfileForm');
+    }
   	
   	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
     $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
