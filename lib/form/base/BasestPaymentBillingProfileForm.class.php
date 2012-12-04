@@ -218,7 +218,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		//$this->dBg?sfContext::getInstance()->getLogger()->debug('Production Environment, Setting Sandbox to false'):null;
   	}
   	
-  	if($billRequest){
+  	if($billRequest !==false){
   		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
   		if(!$billResponse->isOk()){
   			return false;//if the billing fails, there was a problem with the card and we should stop processing.
