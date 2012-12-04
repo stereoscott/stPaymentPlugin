@@ -199,7 +199,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	
 	  //get the Auth.net object and the API object we pass to it
     $updateRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
-    $this->subscription = $this->getAuthNetSubscriptionApiObject($updateRequest);
+    $this->subscriptionApiObject = $this->getAuthNetSubscriptionApiObject($updateRequest);
     
 	  //check for back bills and settup a new AIM request so we can bill.
 	  if(($amount = $subscription->totalMissedPayments()) && $amount > 0){
@@ -278,7 +278,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     }
   	
   	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
-    $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscription);
+    $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscriptionApiObject);
   	$this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Response Code: '.$updateResponse->getResultCode()):null;
   	$this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Request: '.$updateRequest->getPostString()):null;
   
