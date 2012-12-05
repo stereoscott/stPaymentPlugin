@@ -88,7 +88,8 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   
   public function save()
   {
-  	$this->dBg = true;
+  	$this->dBg = true;//manually change this if you're stuck debugging. You'll get alot more info
+    if(sfConfig::get('sf_environment') == 'prod') $this->dBg = false;//we never want to allow this to be true on production because we might output credit card info.
 	  $this->dBg?sfContext::getInstance()->getLogger()->debug('Rechead inside form.save'):null;
     // get our customer subscription object so we know which merchant account to use
     try{
@@ -255,7 +256,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			if($isRenewal){
   				$fields = $this->getTransactionFields();
   				//we should generate the new purchase
-  				$newPurchase = $purchase->generatePurchase(array(
+  				$newPurchase = $purchase->generateNewPurchase(array(
   			      'bill_first_name'     => $fields['first_name'],
   			      'bill_last_name'      => $fields['last_name'], 
   			      'bill_street'         => $fields['address'],   
