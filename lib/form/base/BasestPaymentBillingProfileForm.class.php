@@ -97,7 +97,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	      ->createQuery('cs')
 	      ->innerJoin('cs.AuthNetSubscription ans')
 	      ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
-        ->orderBy('ans.created_at DESC')
+//        ->orderBy('ans.created_at DESC')
 	      ->fetchOne();
 		  if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->debug('Found Customer Subscription'):null;} 
 		  else {$this->dBg?sfContext::getInstance()->getLogger()->err('Failed Finding Customer Subscription'):null;}
