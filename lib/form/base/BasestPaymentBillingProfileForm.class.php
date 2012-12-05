@@ -143,8 +143,10 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     } catch(Exception $e){
       if(!$this->dbg){
         sfContext::getInstance()->getLogger()->crit('Error trying to Process update: '.$e->getMessage());
+        throw $e;
       }else{
         sfContext::getInstance()->getLogger()->crit('Error trying to Process update: '.$e->getTraceAsString());
+        throw $e;
       }
     }
   }
