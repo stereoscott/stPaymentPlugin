@@ -246,14 +246,14 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			
   			
   			//then if it's monthly, check the the paynum on all the transaction errors
-  			$isRenewal=false;
+  			$this->isRenewal=false;
   			if($purchase->isYearly()){
-  				$isRenewal=true;
+  				$this->isRenewal=true;
   			}elseif($purchase->isMonthly() && $subscription->isMonthlyRenewalMissedPayments()){
-  				$isRenewal=true;
+  				$this->isRenewal=true;
   			}
   			//if we have a renewal
-  			if($isRenewal){
+  			if($this->isRenewal){
   				$fields = $this->getTransactionFields();
   				//we should generate the new purchase
   				$newPurchase = $purchase->generateNewPurchase(array(
@@ -273,7 +273,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   				// we should send the renewal email
   				$this->getCustomer()->sendRenewalEmail();
   				
-  			}//END OF if($isRenewal)
+  			}//END OF if($this->isRenewal)
   			// we should clear the transaction errors
   			$subscription->markMissedPaymentsProcessed();
   		}//END OF else OF if(!$billResponse->isOk())
