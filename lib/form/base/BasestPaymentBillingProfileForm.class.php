@@ -20,11 +20,6 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     
     $this->widgetSchema->setHelp('fname', null);
     $this->widgetSchema->setNameFormat('payment[%s]');
-    try{
-      throw new Exception('Manual Error in set of BaststPaymentBillingProfileForm');
-    } catch (Exception $e){
-      sfContext::getInstance()->getLogger()->debug($e->getTraceAsString());
-    }
   }
   
   public function validateSubscriptionId($validator, $value)
@@ -132,6 +127,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       	//TODO add a check against the rebilling error process to this if
     		if(isset($this->billResponse) && $this->billResponse->error){
     			  sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message);
+            
         		throw new Exception("Update Failed, Recheck Info");
     		}elseif($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
         		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->getErrorMessage());
@@ -226,6 +222,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	if($billRequest !==false){
   		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
   		if(!$billResponse->approved){
+  		  $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed: '.$billRequest->getPostString()):null; 
   			return false;//if the billing fails, there was a problem with the card and we should stop processing.
   		}else{
   			//first get all the transaction errors
@@ -278,9 +275,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			// we should clear the transaction errors
   			$subscription->markMissedPaymentsProcessed();
   		}//END OF else OF if(!$billResponse->isOk())
-  	} else {
-  	  sfContext::getInstance()->getLogger()->debug('if($billRequest && $this->transaction) returned false because '.($billRequest?'The transaction was not set':'$billRequest was false').' in processUpdate of BasestPaymentBillingProfileForm');
-    }
+  	}
   	
   	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
     $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscriptionApiObject);
