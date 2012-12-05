@@ -78,11 +78,11 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   public function initMerchantAccountCredentials(CustomerSubscription $subscription)
   {
     // the merchant account is stored in the purchase line item
-    $merchantAccountId = $subscription['Purchase']['merchant_account_id'];
+    $this->merchantAccountId = $subscription['Purchase']['merchant_account_id'];
     
-    if ($merchantAccountId) {
+    if ($this->merchantAccountId) {
       // init the merchant account credentials based on the subscription
-      $this->getPaymentProcessor()->setMerchantAccountId($merchantAccountId);
+      $this->getPaymentProcessor()->setMerchantAccountId($this->merchantAccountId);
     }
   }
   
@@ -230,6 +230,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		}else{
   		  //save the transaction
   		  $transaction = AuthNetTransaction::fromAIMResponse($billResponse, array('subscription_id' => $this->getValue('subscription_id'), 'customer_id' => $this->getCustomer()->getId()));
+        if(isset($this->merchantAccountId)) $transaction->configureMerchantAccountId($this->merchantAccountId);//this would be set in initMerchantAccountCredentials.
         $transaction->save();
         
   			//first get all the transaction errors
