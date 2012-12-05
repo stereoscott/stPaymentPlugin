@@ -130,8 +130,8 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       } else {
       	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
       	//TODO add a check against the rebilling error process to this if
-    		if(isset($this->billResponse) && $this->billResponse->isError()){
-    			  sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->getErrorMessage());
+    		if(isset($this->billResponse) && $this->billResponse->error){
+    			  sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message);
         		throw new Exception("Update Failed, Recheck Info");
     		}elseif($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
         		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->getErrorMessage());
@@ -209,6 +209,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $billRequest = $this->getAuthNetAIMBillingApiObject($billRequest);
       sfContext::getInstance()->getLogger()->debug('billRequest successfully set in processUpdate of BasestPaymentBillingProfileForm for amount: '.$amount);
 	  }
+    //TODO we should probably still initialize an AIM transaction so we can verify card validiy? - 12/4/2012 Tyler
 	
 	  //$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request'):null;
 	
@@ -222,7 +223,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	
   	if($billRequest !==false){
   		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
-  		if(!$billResponse->isOk()){
+  		if(!$billResponse->approved){
   			return false;//if the billing fails, there was a problem with the card and we should stop processing.
   		}else{
   			//first get all the transaction errors
