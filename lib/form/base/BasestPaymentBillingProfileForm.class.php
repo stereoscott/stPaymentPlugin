@@ -50,7 +50,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   
   public function getChargedBalance($amount)
   {
-    $this->getOption('amount');
+    return $this->getOption('amount');
   }
   
   
