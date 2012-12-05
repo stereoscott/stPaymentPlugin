@@ -228,7 +228,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         return false;//if the billing fails, there was a problem with the card and we should stop processing.
   		}else{
   		  //save the transaction
-  		  $transaction = AuthNetTransaction::fromAIMResponse($billResponse, $subscription->getId());
+  		  $transaction = AuthNetTransaction::fromAIMResponse($billResponse, array('subscription_id' => $subscription->getId(), 'customer_id' => $this->getCustomer()->getId()));
         $transaction->save();
         
   			//first get all the transaction errors

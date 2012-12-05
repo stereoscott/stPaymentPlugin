@@ -129,15 +129,16 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
     return $transaction;
   }
   
-  public static function fromAIMResponse(AuthorizeNetAIM_Response $response) 
+  public static function fromAIMResponse(AuthorizeNetAIM_Response $response, $values = array()) 
   {
     $transaction = new AuthNetTransaction();
     $transaction->updateWithAIMResponse($response);
-        
+    if(isset($values['customer_id']))$transaction->setLocalCustomerId($values['customer_id']);
+    if(isset($values['subscription_id']))$transaction->setSubscriptionId($values['subscription_id']);
     return $transaction;                                        
   }
   
-  public function updateWithAIMResponse(AuthorizeNetAIM_Response $response, $subscription_id = null) 
+  public function updateWithAIMResponse(AuthorizeNetAIM_Response $response) 
   {
     $values = array(
       'response_code'        => $response->response_code,        #1, 2, 3, 4
