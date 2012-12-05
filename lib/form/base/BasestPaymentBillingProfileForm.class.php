@@ -97,6 +97,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	      ->createQuery('cs')
 	      ->innerJoin('cs.AuthNetSubscription ans')
 	      ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
+        ->orderBy('ans.created_at DESC')
 	      ->fetchOne();
 		  if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->debug('Found Customer Subscription'):null;} 
 		  else {$this->dBg?sfContext::getInstance()->getLogger()->err('Failed Finding Customer Subscription'):null;}
@@ -228,7 +229,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         return false;//if the billing fails, there was a problem with the card and we should stop processing.
   		}else{
   		  //save the transaction
-  		  $transaction = AuthNetTransaction::fromAIMResponse($billResponse, array('subscription_id' => $subscription->getId(), 'customer_id' => $this->getCustomer()->getId()));
+  		  $transaction = AuthNetTransaction::fromAIMResponse($billResponse, array('subscription_id' => $this->getValue('subscription_id'), 'customer_id' => $this->getCustomer()->getId()));
         $transaction->save();
         
   			//first get all the transaction errors
@@ -312,7 +313,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       }
       
       $customer = $this->getCustomer();
-      
+      if($subscriptionId === null)$subscriptionId=
       $authNetSubscription = Doctrine::getTable('AuthNetSubscription')
         ->createQuery('ans')
         ->innerJoin('ans.CustomerSubscriptions cs')
