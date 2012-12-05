@@ -313,7 +313,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       }
       
       $customer = $this->getCustomer();
-      if($subscriptionId === null)$subscriptionId=
+      //if($subscriptionId === null)$subscriptionId=
       $authNetSubscription = Doctrine::getTable('AuthNetSubscription')
         ->createQuery('ans')
         ->innerJoin('ans.CustomerSubscriptions cs')
