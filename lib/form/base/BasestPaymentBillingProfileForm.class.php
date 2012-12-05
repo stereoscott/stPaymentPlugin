@@ -149,7 +149,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   protected function getAuthNetAIMBillingApiObject($transaction = null)
   {
   	$fields = $this->getTransactionFields();
-    if($transaction) $transaction = new AuthorizeNetAIM();
+    if($transaction === null) $transaction = new AuthorizeNetAIM();
 	  $ccExpirationDate = strtotime($this->getValue('exp'));//TODO fix
     $transaction->setField('card_num',		$fields['card_num']);//TODO fix
     $transaction->setField('exp_date',		date('Y-m', $ccExpirationDate));
