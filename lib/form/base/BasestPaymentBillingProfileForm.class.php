@@ -222,8 +222,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	if($billRequest !==false){
   		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
   		if(!$billResponse->approved){
-  		  $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed: '.$billRequest->getPostString()):null; 
-  			return false;//if the billing fails, there was a problem with the card and we should stop processing.
+  		  $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, request: '.$billRequest->getPostString()):null; 
+  			$this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, response: '.$billResponse->response):null; 
+        return false;//if the billing fails, there was a problem with the card and we should stop processing.
   		}else{
   			//first get all the transaction errors
   			$errors=$subscription->retrieveMissedPayments();
