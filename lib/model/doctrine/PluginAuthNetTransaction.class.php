@@ -13,10 +13,10 @@
 abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
 {
   public function getGrandTotal(){
-    return (int) ($this->getAmount()?$this->getAmount():0) + 
-           (int) ($this->getFreight()?$this->getFreight():0) +
-           (int) ($this->getDuty()?$this->getDuty():0) + 
-           (int) ($this->getTax()?$this->getTax():0);
+    return ($this->getAmount()?$this->getAmount():0) + 
+           ($this->getFreight()?$this->getFreight():0) +
+           ($this->getDuty()?$this->getDuty():0) + 
+           ($this->getTax()?$this->getTax():0);
   }
   
   public function isApproved()
@@ -62,7 +62,7 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
         ->where('a.subscription_id = ?', $this->subscription_id)
 		//->andWhere('a.id IN (SELECT cs.auth_net_subscription_id FROM customer_subscription AS cs WHERE cs')
 		//->leftJoin('CustomerSubscription cs ON cs.auth_net_subscription_id = a.id')
-        ->orderBy('a.created_at DESC') // put newest (smallest) at the top of the result set
+        ->orderBy('a.created_at DESC') // put newest (largest) at the top of the result set
         ->fetchOne();
 		
 	if($existingSub){
@@ -137,7 +137,7 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
     return $transaction;                                        
   }
   
-  public function updateWithAIMResponse(AuthorizeNetAIM_Response $response) 
+  public function updateWithAIMResponse(AuthorizeNetAIM_Response $response, $subscription_id = null) 
   {
     $values = array(
       'response_code'        => $response->response_code,        #1, 2, 3, 4
@@ -181,7 +181,7 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
       'MD5_Hash'             => $response->md5_hash,
       'cavv_response'        => $response->cavv_response,
       'test_request'         => null,
-      'subscription_id'      => null,
+      'subscription_id'      => $subscription_id,
       'subscription_paynum'  => null,
     );
     
