@@ -186,7 +186,7 @@ class BasestPaymentForm extends sfForm
       define('AUTHORIZENET_LOG_FILE', sfConfig::get('sf_log_dir').'/authorizenet_'.sfConfig::get('sf_environment').'.log');
     }
         
-    if ($trialLength = $this->getTrialPeriod()) {//this should not trigger on the SB site
+    if (false and $trialLength = $this->getTrialPeriod()) {//this should not trigger on the SB site
       if ($trialAmount = $this->getAmount()) { // amount of first charge
         $response = $this->authorizeCaptureAndSubscribe($trialAmount, $this->getAmountAfterTrial(), $trialLength.' days');
       } else { // free trial
@@ -198,7 +198,7 @@ class BasestPaymentForm extends sfForm
         $response = $this->authorizeAndCapture($this->getAmount());
       } elseif ($paymentPeriod == 'monthly'){
         // process a 'paid' trial with the first trial period equal to the payment term
-        //$trialLength = ($paymentPeriod == 'yearly') ? '1 year' : '1 month';
+        $trialLength = ($paymentPeriod == 'yearly') ? '1 year' : '1 month';//because we bill the first one.
         //Note: We no longer allow recuring billing longer than a year to be setup for new customer because AIG doesn't like auto-renewals
         $totalOccurances = '11';//since we're charging the first month automatically.
         $response = $this->authorizeCaptureAndSubscribe($this->getAmount(), $this->getAmount(), $trialLength, $totalOccurances);
@@ -270,7 +270,7 @@ class BasestPaymentForm extends sfForm
    *
    * @param float $amount 
    * @param string $trialLengthString 
-   * @param int $intervalLength in months
+   * @param int $intervalLength in months 
    * @return @see AuthorizeNetARB::createSubscription()
    */
   protected function processRecurringTransaction($amount, $trialLengthString, $intervalLength = null, $invoiceNumber = null, $totalOccurances = "9999")
@@ -283,7 +283,7 @@ class BasestPaymentForm extends sfForm
     $arbRequest = new AuthorizeNetARB($apiLogin['login'], $apiLogin['key']);
     
     $startDate      = $this->getSubscriptionStartDate($trialLengthString);
-    $subscription   = $this->getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $invoiceNumber);
+    $subscription   = $this->getAuthorizeNetSubscription($startDate, $intervalLength, $amount, $invoiceNumber, $totalOccurances);
     
     $response = $arbRequest->createSubscription($subscription);
     
