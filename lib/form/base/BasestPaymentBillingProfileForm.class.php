@@ -277,7 +277,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   				$purchase->processRenewal($newPurchase, sfContext::getInstance());
   				
   				// we should send the renewal email
-  				$this->getCustomer()->sendRenewalEmail();
+  				$this->getCustomer()->sendRenewalEmail($newPurchase);
   				
   			}//END OF if($this->isRenewal)
   			// we should clear the transaction errors
