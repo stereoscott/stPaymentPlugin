@@ -209,7 +209,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       $billRequest = $this->getAuthNetAIMBillingApiObject($billRequest);
       sfContext::getInstance()->getLogger()->debug('billRequest successfully set in processUpdate of BasestPaymentBillingProfileForm for amount: '.$amount);
 	  }
-    //TODO we should probably still initialize an AIM transaction so we can verify card validiy? - 12/4/2012 Tyler
+    //TODO we should probably still initialize an AIM transaction so we can verify card validity? - 12/4/2012 Tyler
 	
 	  //$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request'):null;
 	
@@ -217,11 +217,11 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	
   	if(sfConfig::get('sf_environment') == 'prod'){
   		$updateRequest->setSandbox(false);
-      $billRequest->setSandbox(false);
+      if($billRequest !== false) $billRequest->setSandbox(false);
   		//$this->dBg?sfContext::getInstance()->getLogger()->debug('Production Environment, Setting Sandbox to false'):null;
   	}
   	
-  	if($billRequest !==false){
+  	if($billRequest !==false ){
   		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
   		if(!$billResponse->approved){
   		  $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, request: '.$billRequest->getPostString()):null; 
