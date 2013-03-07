@@ -72,6 +72,14 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   
   public function getPaymentProcessor()
   {
+    if (!defined('AUTHORIZENET_SANDBOX')) {
+      define('AUTHORIZENET_SANDBOX', sfConfig::get('app_stPayment_sandbox'));
+    }
+    
+    if (!defined('AUTHORIZENET_LOG_FILE') && sfConfig::get('sf_logging_enabled')) {
+      define('AUTHORIZENET_LOG_FILE', stAuthorizeNet::getLogFilePath());
+    }
+    
     return stAuthorizeNet::getInstance();
   }
   
@@ -126,7 +134,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	  //sfContext::getInstance()->getLogger()->debug('Saved Subscription');
       } else {
       	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
-      	//TODO add a check against the rebilling error process to this if
+      	//TODO add a check against the rebilling error process to this if we're in testing and might have run similar transactions
     		if(isset($this->billResponse) && $this->billResponse->error){
     			  sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message);
             
