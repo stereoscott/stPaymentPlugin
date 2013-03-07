@@ -126,10 +126,12 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         $authNetSubscription['bill_to_city']       = $this->subscription->billToCity;           
         $authNetSubscription['bill_to_state']      = $this->subscription->billToState;
         $authNetSubscription['bill_to_zip']        = $this->subscription->billToZip;
-        $authNetSubscription['bill_to_country']     = $this->subscription->billToCountry;
+        $authNetSubscription['bill_to_country']    = $this->subscription->billToCountry;
+        $authNetSubscription['status']             = $this->subscription->
   	    $this->dBg?sfContext::getInstance()->getLogger()->debug('Trying to Save Subscription'):null;
         $authNetSubscription->save();
-        sfContext::getInstance()->getLogger()->debug('Subscription saved.');
+        sfContext::getInstance()->getLogger()->debug('Subscription saved. Checking Status...');
+        $authNetSubscription['']
         //
   	  //sfContext::getInstance()->getLogger()->debug('Saved Subscription');
       } else {
@@ -212,12 +214,13 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     sfContext::getInstance()->getLogger()->debug('Got a test amount of: '.$subscription->totalMissedPayments().' in processUpdate of BasestPaymentBillingProfileForm');
     
 	  //check for back bills and settup a new AIM request so we can bill.
-	  if(($amount = $subscription->totalMissedPayments()) && $amount > 0){
+	  if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended'){
 		  $billRequest = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
       $billRequest = $this->getAuthNetAIMBillingApiObject($billRequest);
       sfContext::getInstance()->getLogger()->debug('billRequest successfully set in processUpdate of BasestPaymentBillingProfileForm for amount: '.$amount);
 	  }
     //TODO we should probably still initialize an AIM transaction so we can verify card validity? - 12/4/2012 Tyler
+    //TODO note that even if we only do an authorize, we still pay the processing fee.
 	
 	  //$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request'):null;
 	
@@ -230,6 +233,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	}
   	
   	if($billRequest !==false ){
+  	  if($ammount)
   		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
   		if(!$billResponse->approved){
   		  $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, request: '.$billRequest->getPostString()):null; 
@@ -241,11 +245,13 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         if(isset($this->merchantAccountId)) $transaction->configureMerchantAccountId($this->merchantAccountId);//this would be set in initMerchantAccountCredentials.
         $transaction->save();
         
-  			//first get all the transaction errors
-  			$errors=$subscription->retrieveMissedPayments();
+  			//first get all the transaction errors TODO remove these lines, they are old
+  			//$errors=$subscription->retrieveMissedPayments();
+  			
+  			//Set the amount we charged for display on the confirmation page.
   			$this->setChargedBalance($amount);
   			
-  			//then get the original purchase
+  			//then get the original purchase so we can use it to pr
   			$purchase = $subscription->getPurchase();
   			if(!$purchase || !is_object($purchase)){//try this if a the other retrieval fails because there are inconsitencies in some older records
   				try{
@@ -292,6 +298,8 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			$subscription->markMissedPaymentsProcessed();
   		}//END OF else OF if(!$billResponse->isOk())
   	}
+
+    
   	
   	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
     $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscriptionApiObject);
