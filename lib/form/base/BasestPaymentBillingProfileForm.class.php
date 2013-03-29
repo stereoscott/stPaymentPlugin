@@ -127,26 +127,22 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         $authNetSubscription['bill_to_state']      = $this->subscription->billToState;
         $authNetSubscription['bill_to_zip']        = $this->subscription->billToZip;
         $authNetSubscription['bill_to_country']    = $this->subscription->billToCountry;
-        $authNetSubscription['status']             = $this->subscription->
-  	    $this->dBg?sfContext::getInstance()->getLogger()->debug('Trying to Save Subscription'):null;
-        $authNetSubscription->save();
-        sfContext::getInstance()->getLogger()->debug('Subscription saved. Checking Status...');
-        $authNetSubscription['']
-        //
-  	  //sfContext::getInstance()->getLogger()->debug('Saved Subscription');
+  	    $this->dBg?sfContext::getInstance()->getLogger()->debug('Trying to update Status and Save Subscription'):null;
+        $authNetSubscription->updateStatusUsingAuthNet($message) or $authNetSubscription->save() && $this->dBg?sfContext::getInstance()->getLogger()->debug('Error Updating Status: '.$message):null;
+        sfContext::getInstance()->getLogger()->debug('Subscription saved..');
       } else {
       	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
       	//TODO add a check against the rebilling error process to this if we're in testing and might have run similar transactions
     		if(isset($this->billResponse) && $this->billResponse->error){
     			  sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message);
-            
-        		throw new Exception("Update Failed, Recheck Info");
+        		throw new Exception("Update Failed, Recheck Billing Information");
     		}elseif($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
         		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->getErrorMessage());
-        		throw new Exception("Update Failed, Recheck Info");
+        		throw new Exception("Update Failed, Please contact Member Services if you have double checked your Billing Information.");
         } else {
         		sfContext::getInstance()->getLogger()->crit('Updated failed with No Errors');
-        		throw new Exception("Updated failed with No Errors.");}
+        		throw new Exception("Updated failed with No Errors.");
+        }
       }//end of else
     } catch(Exception $e){
       if(!$this->dbg){
@@ -214,13 +210,14 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     sfContext::getInstance()->getLogger()->debug('Got a test amount of: '.$subscription->totalMissedPayments().' in processUpdate of BasestPaymentBillingProfileForm');
     
 	  //check for back bills and settup a new AIM request so we can bill.
-	  if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended'){
+	  //if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended'){
 		  $billRequest = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
       $billRequest = $this->getAuthNetAIMBillingApiObject($billRequest);
       sfContext::getInstance()->getLogger()->debug('billRequest successfully set in processUpdate of BasestPaymentBillingProfileForm for amount: '.$amount);
-	  }
+	  //}
     //TODO we should probably still initialize an AIM transaction so we can verify card validity? - 12/4/2012 Tyler
     //TODO note that even if we only do an authorize, we still pay the processing fee.
+    
 	
 	  //$this->dBg?sfContext::getInstance()->getLogger()->err('Process Update 3 - Retrieved Request'):null;
 	
@@ -232,9 +229,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		//$this->dBg?sfContext::getInstance()->getLogger()->debug('Production Environment, Setting Sandbox to false'):null;
   	}
   	
-  	if($billRequest !==false ){
-  	  if($ammount)
-  		$this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
+  	if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended'){
+      $this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
+      
   		if(!$billResponse->approved){
   		  $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, request: '.$billRequest->getPostString()):null; 
   			$this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, response: '.$billResponse->response):null; 
@@ -297,16 +294,44 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			// we should clear the transaction errors
   			$subscription->markMissedPaymentsProcessed();
   		}//END OF else OF if(!$billResponse->isOk())
-  	}
+  	} else {//Now handle just a simple payment info check
+  	  $this->billResponse = $billResponse = $billRequest->authorizeOnly('0.00');
+      if(!$this->billResponse->approved){
+        $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, request: '.$billRequest->getPostString()):null; 
+        $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, response: '.$billResponse->response):null; 
+        return false;//if the billing fails, there was a problem with the card and we should stop processing.
+      }
+    }
 
-    
+    //Status before update
+    $priorStatus = $subscription->retrieveARBstatus();
   	
   	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
     $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscriptionApiObject);
   	$this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Response Code: '.$updateResponse->getResultCode()):null;
   	$this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Request: '.$updateRequest->getPostString()):null;
   
-  	//This check to see if we need the Bill Response to be OK and then returns it.
+    //We need to check to see if there is still a transaction to mark as processed and a status to update for suspended subscriptions
+    if($updateResponse->isOk() && $priorStatus == 'suspended'){
+      //update status so we can check that it's active again.
+      $resultMessage = $subscription->updateARBstatus();
+      if($resultMessage === true){
+        if($subscription->retrieveARBstatus() == 'active'){
+          sfContext::getInstance()->getLogger()->debug('Marking missed payment as procesed in processUpdate of BasestPaymentBillingProfileForm because our status has been updated');
+          $subscription->markMissedPaymentsProcessed();
+        } else sfContext::getInstance()->getLogger()->err('Did not mark missed payment as processin in processUpdate of BaststPaymentBillingProfileForm because our status is not "active"');
+        //mark transaction as processed
+      } else {
+        //We failed to get the current status, now what? Should we mark the transaction are processed or not?
+        //Let's got with not marking it processed since I think the silent post listener should take care of this
+        // if we do end up getting Auth.net to rebill. Otherwise, we're still gravy?
+        sfContext::getInstance()->getLogger()->err('Failed to retrieve status for ARB subscription in processUpdate of BaststPaymentBillingProfileForm: '.$resultMessage);
+        //do nothing
+      }
+      
+    } elseif(!$updateResponse->isOk())sfContext::getInstance()->getLogger()->err('Updating ARB subscription failed in processUpdate of BasestPaymentBillingProfileForm');
+    
+  	//This check to see if the Bill Response is OK and then returns it.
     return $updateResponse->isOk();
   }  
   
