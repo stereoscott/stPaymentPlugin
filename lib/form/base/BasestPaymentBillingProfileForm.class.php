@@ -107,9 +107,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	      ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
 //        ->orderBy('ans.created_at DESC')
 	      ->fetchOne();
-		  if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->debug('Found Customer Subscription'):null;} 
-		  else {$this->dBg?sfContext::getInstance()->getLogger()->err('Failed Finding Customer Subscription'):null;}
-	  } catch (Exception $e){$this->dBg?sfContext::getInstance()->getLogger()->crit('Fatal Error Finding Customer Subscription'.$e->getMessage,'err'):null;}
+		  if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') Found Customer Subscription'):null;} 
+		  else {$this->dBg?sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Failed Finding Customer Subscription'):null;}
+	  } catch (Exception $e){$this->dBg?sfContext::getInstance()->getLogger()->crit('(Cust: '.$this->getCustomer()->getId().') Fatal Error Finding Customer Subscription'.$e->getMessage,'err'):null;}
       
     $this->initMerchantAccountCredentials($customerSubscription);
 	  $this->dBg?sfContext::getInstance()->getLogger()->debug('Got Credentials'):null;
@@ -257,10 +257,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   				        ->orderBy('p.created_at DESC') // put newest (biggest date) at the top of the result set
   				        ->fetchOne();
   				} catch(Exception $e) {
-  				      sfContext::getInstance()->getLogger()->crit('Could not retrieve old Purchase. Error: '.$e->getMessage());
+  				      sfContext::getInstance()->getLogger()->crit('(Cust: '.$this->getCustomer()->getId().') Could not retrieve old Purchase. Error: '.$e->getMessage());
   				}
   			}
-  			
   			
   			//then if it's monthly, check the the paynum on all the transaction errors
   			$this->isRenewal=false;
@@ -269,6 +268,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			}elseif($purchase->isMonthly() && $subscription->isMonthlyRenewalMissedPayments()){
   				$this->isRenewal=true;
   			}
+        
   			//if we have a renewal
   			if($this->isRenewal){
   				$fields = $this->getTransactionFields();
@@ -296,9 +296,12 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		}//END OF else OF if(!$billResponse->isOk())
   	} else {//Now handle just a simple payment info check
   	  $this->billResponse = $billResponse = $billRequest->authorizeOnly('0.00');
-      if(!$this->billResponse->approved){
-        $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, request: '.$billRequest->getPostString()):null; 
-        $this->dBg?sfContext::getInstance()->getLogger()->debug('Billing transaction failed, response: '.$billResponse->response):null; 
+      if($this->billResponse->approved){
+        $void = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
+        $voidResponse = $void->void($this->billResponse->transaction_id);
+      } else {
+        $this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') Billing transaction failed, request: '.$billRequest->getPostString()):null; 
+        $this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') Billing transaction failed, response: '.$billResponse->response):null; 
         return false;//if the billing fails, there was a problem with the card and we should stop processing.
       }
     }
@@ -319,18 +322,20 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         if($subscription->retrieveARBstatus() == 'active'){
           sfContext::getInstance()->getLogger()->debug('Marking missed payment as procesed in processUpdate of BasestPaymentBillingProfileForm because our status has been updated');
           $subscription->markMissedPaymentsProcessed();
-        } else sfContext::getInstance()->getLogger()->err('Did not mark missed payment as processin in processUpdate of BaststPaymentBillingProfileForm because our status is not "active"');
+        } else sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Did not mark missed payment as processed in processUpdate of BaststPaymentBillingProfileForm because our status is not "active"');
         //mark transaction as processed
       } else {
         //We failed to get the current status, now what? Should we mark the transaction are processed or not?
         //Let's got with not marking it processed since I think the silent post listener should take care of this
         // if we do end up getting Auth.net to rebill. Otherwise, we're still gravy?
-        sfContext::getInstance()->getLogger()->err('Failed to retrieve status for ARB subscription in processUpdate of BaststPaymentBillingProfileForm: '.$resultMessage);
+        sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Failed to retrieve status for ARB subscription in processUpdate of BaststPaymentBillingProfileForm: '.$resultMessage);
         //do nothing
       }
       
-    } elseif(!$updateResponse->isOk())sfContext::getInstance()->getLogger()->err('Updating ARB subscription failed in processUpdate of BasestPaymentBillingProfileForm');
-    
+    } elseif(!$updateResponse->isOk()){
+      sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Updating ARB subscription failed in processUpdate of BasestPaymentBillingProfileForm');
+      
+    }
   	//This check to see if the Bill Response is OK and then returns it.
     return $updateResponse->isOk();
   }  

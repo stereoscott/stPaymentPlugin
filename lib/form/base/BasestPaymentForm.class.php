@@ -333,7 +333,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
       return $authNetTransaction;
     } catch (Exception $e) {
       // not critical enough to stop
-      sfContext::getInstance()->getLogger()->crit('Could not save an auth_net_transaction object to the db: '.$e->getMessage());
+      sfContext::getInstance()->getLogger()->crit('Could not save an auth_net_transaction object to the db: '.$e->getMessage().' in saveAuthNetTransactionToDb of BaststPaymentForm');
       if (sfConfig::get('sf_environment') == 'dev') {
         throw $e;
       }
@@ -358,7 +358,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
       return $authNetSubscription;
     } catch (Exception $e) {
       // not critical enough to stop. Is this terrible? 
-      sfContext::getInstance()->getLogger()->crit('Could not save an auth_net_transaction object to the db: '.$e->getMessage());
+      sfContext::getInstance()->getLogger()->crit('Could not save an auth_net_transaction object to the db: '.$e->getMessage().' in saveAuthNetSubscriptionToDb of BaststPaymentForm');
       if (sfConfig::get('sf_environment') == 'dev') {
         throw $e;
       }

@@ -68,7 +68,7 @@ abstract class PluginAuthNetTransaction extends BaseAuthNetTransaction
 	if($existingSub){
 		return $existingSub;
 	} else {
-		sfContext::getInstance()->getLogger()->crit('Unknown AuthNetSubscription for transaction with subscription_id: '.$this->subscription_id);
+		sfContext::getInstance()->getLogger()->crit('Unknown AuthNetSubscription for transaction with subscription_id: '.$this->subscription_id.' in retrieveANS of PluginAuthNetTransaction');
 		throw new Exception('Unknown AuthNetSubscription for transaction with subscription_id: '.$this->subscription_id);
 		return false;
 	}
