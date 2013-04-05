@@ -107,9 +107,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	      ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
 //        ->orderBy('ans.created_at DESC')
 	      ->fetchOne();
-		  if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') Found Customer Subscription'):null;} 
-		  else {$this->dBg?sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Failed Finding Customer Subscription'):null;}
-	  } catch (Exception $e){$this->dBg?sfContext::getInstance()->getLogger()->crit('(Cust: '.$this->getCustomer()->getId().') Fatal Error Finding Customer Subscription'.$e->getMessage,'err'):null;}
+		  if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') Found Customer Subscription in save() of BasestPaymentBillingProfileForm at line: '.__LINE__):null;} 
+		  else {$this->dBg?sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Failed Finding Customer Subscription in save() of BasestPaymentBillingProfileForm at line: '.__LINE__):null;}
+	  } catch (Exception $e){$this->dBg?sfContext::getInstance()->getLogger()->crit('(Cust: '.$this->getCustomer()->getId().') Fatal Error Finding Customer Subscription: '.$e->getMessage(). 'in save() of BasestPaymentBillingProfileForm at line: '.__LINE__):null;}
       
     $this->initMerchantAccountCredentials($customerSubscription);
 	  $this->dBg?sfContext::getInstance()->getLogger()->debug('Got Credentials'):null;
@@ -135,12 +135,12 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       	//TODO add a check against the rebilling error process to this if we're in testing and might have run similar transactions
     		if(isset($this->billResponse) && $this->billResponse->error){
     			  sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message);
-        		throw new Exception("Update Failed, Recheck Billing Information");
+        		throw new Exception("Update Failed, Please recheck your billing information.");
     		}elseif($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
-        		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->getErrorMessage());
-        		throw new Exception("Update Failed, Please contact Member Services if you have double checked your Billing Information.");
+        		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->error_message);
+        		throw new Exception("Update Failed, Please contact member services if you have already double checked your billing information.");
         } else {
-        		sfContext::getInstance()->getLogger()->crit('Updated failed with No Errors');
+        		sfContext::getInstance()->getLogger()->crit('Updated Failed with an unknown error. Please contact member services.');
         		throw new Exception("Updated failed with No Errors.");
         }
       }//end of else
