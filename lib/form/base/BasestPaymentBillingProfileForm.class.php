@@ -135,14 +135,14 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       	//TODO add a check against the rebilling error process to this if we're in testing and might have run similar transactions
     		if(isset($this->billResponse) && !$this->billResponse->approved){
     		    if($this->billResponse->error === true && $this->billResponse->error_message){
-    			     sfContext::getInstance()->getLogger()->crit('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message.' in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
+    			     sfContext::getInstance()->getLogger()->crit('Found an Error when Billing AuthNet: ('.$response_code.'-'.$response_subcode.') '.$this->billResponse->error_message.' in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
                throw new Exception("Update Failed, Please contact member services if you have already double checked your billing information.");
             } elseif(!$this->billResponse->approved) {
                sfContext::getInstance()->getLogger()->debug('Bad card Info sent to Authorize.net in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
                throw new Exception("Update Failed, Please re-check your billing information.");
             }
     		}elseif(isset($this->updateResponse) && $this->updateResponse->isError()){//we need to cause an exception to be caught if the response
-        		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->error_message.' in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
+        		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: ('.$this->updateResponse->getMessageCode().') '.$this->updateResponse->getMessageText().' in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
         		throw new Exception("Update Failed, Please contact member services if you have already double checked your billing information.");
         } else {
         		sfContext::getInstance()->getLogger()->crit('Updated Failed with an unknown error. Please contact member services.');
