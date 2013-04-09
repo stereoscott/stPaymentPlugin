@@ -134,7 +134,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
       	//TODO add a check against the rebilling error process to this if we're in testing and might have run similar transactions
     		if(isset($this->billResponse) && !$this->billResponse->approved){
-    		    if($this->billResponse->error){
+    		    if($this->billResponse->error === true && $this->billResponse->error_message){
     			     sfContext::getInstance()->getLogger()->crit('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message.' in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
                throw new Exception("Update Failed, Please contact member services if you have already double checked your billing information.");
             } elseif(!$this->billResponse->approved) {
