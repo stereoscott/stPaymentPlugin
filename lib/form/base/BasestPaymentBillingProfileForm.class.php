@@ -128,16 +128,21 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         $authNetSubscription['bill_to_zip']        = $this->subscription->billToZip;
         $authNetSubscription['bill_to_country']    = $this->subscription->billToCountry;
   	    $this->dBg?sfContext::getInstance()->getLogger()->debug('Trying to update Status and Save Subscription'):null;
-        $authNetSubscription->updateStatusUsingAuthNet($message) or $authNetSubscription->save() && $this->dBg?sfContext::getInstance()->getLogger()->debug('Error Updating Status: '.$message):null;
+        $authNetSubscription->updateStatusUsingAuthNet($message) or $authNetSubscription->save() && $this->dBg?sfContext::getInstance()->getLogger()->debug('Error Updating Status: '.$message.' in save() of BasestPaymentBillingProfileForm at line '.__LINE__):null;
         sfContext::getInstance()->getLogger()->debug('Subscription saved..');
       } else {
       	//sfContext::getInstance()->getLogger()->err('processUpdate failed, returned: '.$this->updateResponse->isError()?'true':'false');
       	//TODO add a check against the rebilling error process to this if we're in testing and might have run similar transactions
-    		if(isset($this->billResponse) && $this->billResponse->error){
-    			  sfContext::getInstance()->getLogger()->err('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message);
-        		throw new Exception("Update Failed, Please recheck your billing information.");
-    		}elseif($this->updateResponse->isError()){//we need to cause an exception to be caught if the response
-        		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->error_message);
+    		if(isset($this->billResponse) && !$this->billResponse->approved){
+    		    if($this->billResponse->error){
+    			     sfContext::getInstance()->getLogger()->crit('Found an Error when Billing AuthNet: '.$this->updateResponse->error_message.' in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
+               throw new Exception("Update Failed, Please contact member services if you have already double checked your billing information.");
+            } elseif(!$this->billResponse->approved) {
+               sfContext::getInstance()->getLogger()->debug('Bad card Info sent to Authorize.net in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
+               throw new Exception("Update Failed, Please re-check your billing information.");
+            }
+    		}elseif(isset($this->updateResponse) && $this->updateResponse->isError()){//we need to cause an exception to be caught if the response
+        		sfContext::getInstance()->getLogger()->crit('Found an Error when Updating AuthNet: '.$this->updateResponse->error_message.' in save() of BasestPaymentBillingProfileForm at line '.__LINE__);
         		throw new Exception("Update Failed, Please contact member services if you have already double checked your billing information.");
         } else {
         		sfContext::getInstance()->getLogger()->crit('Updated Failed with an unknown error. Please contact member services.');
@@ -298,7 +303,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	  $this->billResponse = $billResponse = $billRequest->authorizeOnly('0.00');
       if($this->billResponse->approved){
         $void = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
-        $voidResponse = $void->void($this->billResponse->transaction_id);
+        $this->voidResponse = $voidResponse = $void->void($this->billResponse->transaction_id);
       } else {
         $this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') Billing transaction failed, request: '.$billRequest->getPostString()):null; 
         $this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') Billing transaction failed, response: '.$billResponse->response):null; 
