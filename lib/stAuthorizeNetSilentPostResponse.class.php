@@ -18,7 +18,9 @@ class stAuthorizeNetSilentPostResponse extends AuthorizeNetSIM
       sfContext::getInstance()->getLogger()->debug('Recieved SilentPost with empty POST in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
     } elseif(!$this->md5_hash) {
       sfContext::getInstance()->getLogger()->err('Recieved SilentPost with empty md5_hash in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
-    } elseif($this->generateHash() != $this->md5_hash){
+    } elseif($this->generateHash() != $this->md5_hash && !$this->checkAllProcessorHashes()){
+      //TODO: Must generateHash for all the possible accounts
+
       sfContext::getInstance()->getLogger()->crit('Recieved SilentPost with BAD md5_hash in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
     }
     //parent returns:
@@ -27,6 +29,22 @@ class stAuthorizeNetSilentPostResponse extends AuthorizeNetSIM
     
   }
   
+  public function checkAllProcessorHashes(){
+    //first step is to get a DB list
+    $merchantAccounts = sfConfig::get('app_stPayment_merchantAccount', array());
+    foreach ($merchantAccounts as $key => $merchantAccount) {
+      //$merchantAccount['login']
+      //$merchantAccount['key'];
+
+      //TODO Do we neet to find other md5_settings someplace
+
+      $amount = ($this->amount ? $this->amount : "0.00");
+      if(strtoupper(md5($this->md5_setting . $merchantAccount['login'] . $this->transaction_id . $amount))){
+
+      }
+    }
+  }
+
   public function generateHash()
   {
     //parent does:
