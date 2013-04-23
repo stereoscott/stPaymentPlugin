@@ -218,7 +218,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
 	  //if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended'){
 		  $billRequest = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
       $billRequest = $this->getAuthNetAIMBillingApiObject($billRequest);
-      sfContext::getInstance()->getLogger()->debug('billRequest successfully set in processUpdate of BasestPaymentBillingProfileForm for amount: '.$amount);
+      sfContext::getInstance()->getLogger()->debug('billRequest successfully set in processUpdate of BasestPaymentBillingProfileForm');
 	  //}
     //TODO we should probably still initialize an AIM transaction so we can verify card validity? - 12/4/2012 Tyler
     //TODO note that even if we only do an authorize, we still pay the processing fee.
@@ -234,7 +234,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		//$this->dBg?sfContext::getInstance()->getLogger()->debug('Production Environment, Setting Sandbox to false'):null;
   	}
   	
-  	if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended'){
+  	if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended' && $subscription->updateARBStatus() && $subscription->retrieveARBstatus()!='suspended'){
+      //The silly extra code on the end was added because sometimes getting an updated status after a transaction error doesn't work. We need to make an API call here
+      
       $this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
       
   		if(!$billResponse->approved){
