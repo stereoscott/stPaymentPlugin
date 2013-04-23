@@ -105,15 +105,15 @@ abstract class AuthorizeNetRequest
         if ($this->_log_file) {
                   
             if ($curl_error = curl_error($curl_request)) {
-                file_put_contents($this->_log_file, "----CURL ERROR----\n$curl_error\n\n", FILE_APPEND);
+                file_put_contents($this->_log_file, "[".date("M d H:i:s Y")."]"."----CURL ERROR----\n$curl_error\n\n", FILE_APPEND);
             }
             
             // Do not log requests that could contain CC info.
             if (sfConfig::get('sf_environment') != 'prod') {
-              file_put_contents($this->_log_file, "----Request----\n{$this->_post_string}\n", FILE_APPEND);
+              file_put_contents($this->_log_file, "[".date("M d H:i:s Y")."]"."----Request----\n{$this->_post_string}\n", FILE_APPEND);
             }
             
-            file_put_contents($this->_log_file, "----Response----\n$response\n\n", FILE_APPEND);
+            file_put_contents($this->_log_file, "[".date("M d H:i:s Y")."]"."----Response----\n$response\n\n", FILE_APPEND);
         }
         curl_close($curl_request);
         
