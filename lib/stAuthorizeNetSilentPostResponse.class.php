@@ -16,12 +16,20 @@ class stAuthorizeNetSilentPostResponse extends AuthorizeNetSIM
     
     if(!count($_POST)){
       sfContext::getInstance()->getLogger()->debug('Recieved SilentPost with empty POST in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
+      return false;
     } elseif(!$this->md5_hash) {
       sfContext::getInstance()->getLogger()->err('Recieved SilentPost with empty md5_hash in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
+      return false;
     } elseif($this->generateHash() != $this->md5_hash && !$this->checkAllProcessorHashes()){
-      //TODO: Must generateHash for all the possible accounts
-
+      //generate Hash for all the possible accounts and check them.
       sfContext::getInstance()->getLogger()->crit('Recieved SilentPost with BAD md5_hash in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
+      return false;
+    } elseif($this->generateHash() == $this->md5_hash){
+      sfContex::getInstance()->getLogger()->debug('default md5 check found the correct merchantAccount in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
+      return true;
+    } else {
+      sfContex::getInstance()->getLogger()->debug('Fallback md5 check found the correct merchantAccount in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
+      return true;
     }
     //parent returns:
     //return count($_POST) && $this->md5_hash && ($this->generateHash() == $this->md5_hash);
@@ -40,9 +48,10 @@ class stAuthorizeNetSilentPostResponse extends AuthorizeNetSIM
 
       $amount = ($this->amount ? $this->amount : "0.00");
       if(strtoupper(md5($this->md5_setting . $merchantAccount['login'] . $this->transaction_id . $amount))){
-
-      }
+        return true;
+      } else sfContext::getInstance()->getLogger()->debug("Checked hash for account: $key in checkAllProcessorHashes of stAuthorizeNetSilentPostResponse at line: ".__LINE__);
     }
+    return false; //We can't find a processor to match.
   }
 
   public function generateHash()
