@@ -145,6 +145,7 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
     }
     
     $processor = stAuthorizeNet::getInstance();
+    $totalErrors = '';
     
     if ($merchantAccountId = $this->getMerchantAccountId()) {
       $processor->setMerchantAccountId($merchantAccountId);
@@ -161,14 +162,14 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
             return $processor;
 
           }//otherwise, continue
+          if($error !== '') $totalErrors .= $error."\n";//so we can track it
         }
         
         //If we never can find the processor for this subscription we need to throw an error
       }
       sfContext::getInstance()->getLogger->crit("Unable to find MerchantAccount to use for customer (Id: ) on ANS (Id: ) in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
-
+      sfContext::getInstance()->getLogger->debug("those Full Errors are: \n".$totalErrors);
     }
-    
     return $processor;
   }
   
