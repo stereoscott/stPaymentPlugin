@@ -149,21 +149,32 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
     if ($merchantAccountId = $this->getMerchantAccountId()) {
       $processor->setMerchantAccountId($merchantAccountId);
     } else {
-      if ($merchantAccountConfigKey = sfConfig::get('app_stPayment_default')) {
+      sfContext::getInstance()->getLogger()->err("Auth_Net_Subscription (id: {$this->id}) did not have a MerchantAccountId set, we're checking status with all our accounts in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
+      foreach(sfConfig::get('app_stPayment_merchantAccount') as $merchantAccountConfigKey => $accountInfo) {
         $merchantAccountId = Doctrine::getTable('MerchantAccount')->selectIdFromKey($merchantAccountConfigKey);
         if ($merchantAccountId) {
           $processor->setMerchantAccountId($merchantAccountId);
+          $error = '';
+          if($processor != null && $this->updateStatusUsingAuthNet($error, $processor)){//the first term prevents a potential infinite loop of callbacks
+            //This is the correct merchantAccountId
+            $this->setMerchantAccountId($merchantAccountId);
+            return $processor;
+
+          }//otherwise, continue
         }
+        
+        //If we never can find the processor for this subscription we need to throw an error
       }
+      sfContext::getInstance()->getLogger->crit("Unable to find MerchantAccount to use for customer (Id: ) on ANS (Id: ) in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
+
     }
     
     return $processor;
   }
   
-  public function updateStatusUsingAuthNet(&$error = false)
+  public function updateStatusUsingAuthNet(&$error = false, $processor = null)
   {
-    
-    $processor = $this->getPaymentProcessor();
+    if($processor === null) $processor = $this->getPaymentProcessor();
     
     $arbRequest = new AuthorizeNetARB($processor->getUsername(), $processor->getPassword());
     
