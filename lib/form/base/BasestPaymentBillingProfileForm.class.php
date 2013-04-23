@@ -72,15 +72,22 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   
   public function getPaymentProcessor()
   {
-    if (!defined('AUTHORIZENET_SANDBOX')) {
-      define('AUTHORIZENET_SANDBOX', sfConfig::get('app_stPayment_sandbox'));
-    }
+    $authNetSubscription = $this->getOption('authNetSubscription');
     
-    if (!defined('AUTHORIZENET_LOG_FILE') && sfConfig::get('sf_logging_enabled')) {
-      define('AUTHORIZENET_LOG_FILE', stAuthorizeNet::getLogFilePath());
+    if (!$authNetSubscription) {
+      sfContext::getInstance()->getLogger()->err('getPaymentProcessor called in BasestPaymentBillingProfileForm without the authNetSubscription option set at line: '.__LINE__);
+      if (!defined('AUTHORIZENET_SANDBOX')) {
+        define('AUTHORIZENET_SANDBOX', sfConfig::get('app_stPayment_sandbox'));
+      }
+      
+      if (!defined('AUTHORIZENET_LOG_FILE') && sfConfig::get('sf_logging_enabled')) {
+        define('AUTHORIZENET_LOG_FILE', stAuthorizeNet::getLogFilePath());
+      }
+      
+      return stAuthorizeNet::getInstance();
     }
-    
-    return stAuthorizeNet::getInstance();
+
+    return $authNetSubscription->getPaymentProcessor();
   }
   
   public function initMerchantAccountCredentials(CustomerSubscription $subscription)
@@ -329,13 +336,13 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
         if($subscription->retrieveARBstatus() == 'active'){
           sfContext::getInstance()->getLogger()->debug('Marking missed payment as procesed in processUpdate of BasestPaymentBillingProfileForm because our status has been updated');
           $subscription->markMissedPaymentsProcessed();
-        } else sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Did not mark missed payment as processed in processUpdate of BaststPaymentBillingProfileForm because our status is not "active"');
+        } else sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Did not mark missed payment as processed in processUpdate of BasestPaymentBillingProfileForm because our status is not "active"');
         //mark transaction as processed
       } else {
         //We failed to get the current status, now what? Should we mark the transaction are processed or not?
         //Let's got with not marking it processed since I think the silent post listener should take care of this
         // if we do end up getting Auth.net to rebill. Otherwise, we're still gravy?
-        sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Failed to retrieve status for ARB subscription in processUpdate of BaststPaymentBillingProfileForm: '.$resultMessage);
+        sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Failed to retrieve status for ARB subscription in processUpdate of BasestPaymentBillingProfileForm: '.$resultMessage);
         //do nothing
       }
       
