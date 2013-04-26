@@ -326,7 +326,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
     $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscriptionApiObject);
   	$this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Response Code: '.$updateResponse->getResultCode()):null;
-  	$this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Request: '.$updateRequest->getPostString()):null;
+  	$this->dBg && sfConfig::get('sf_environment') != 'prod' ?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Request: '.$updateRequest->getPostString()):null;
   
     //We need to check to see if there is still a transaction to mark as processed and a status to update for suspended subscriptions
     if($updateResponse->isOk() && $priorStatus == 'suspended'){

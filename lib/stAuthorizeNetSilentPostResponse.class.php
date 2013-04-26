@@ -25,10 +25,10 @@ class stAuthorizeNetSilentPostResponse extends AuthorizeNetSIM
       sfContext::getInstance()->getLogger()->crit('Recieved SilentPost with BAD md5_hash in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
       return false;
     } elseif($this->generateHash() == $this->md5_hash){
-      sfContex::getInstance()->getLogger()->debug('default md5 check found the correct merchantAccount in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
+      sfContext::getInstance()->getLogger()->debug('default md5 check found the correct merchantAccount in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
       return true;
     } else {
-      sfContex::getInstance()->getLogger()->debug('Fallback md5 check found the correct merchantAccount in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
+      sfContext::getInstance()->getLogger()->debug('Fallback md5 check found the correct merchantAccount in isAuthorizeNet() of stAuthorizeNetSilentPostResponse at line: '.__LINE__);
       return true;
     }
     //parent returns:

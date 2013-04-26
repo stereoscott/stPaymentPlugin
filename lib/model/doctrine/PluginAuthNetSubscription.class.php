@@ -161,7 +161,7 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
             $this->setMerchantAccountId($merchantAccountId);
             return $processor;
 
-          }//otherwise, continue
+          }//otherwise, continue on to the next potential merchant account
           if($error !== '') $totalErrors .= $error."\n";//so we can track it
         }
         
