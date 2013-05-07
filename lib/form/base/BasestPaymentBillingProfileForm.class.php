@@ -310,6 +310,12 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		}//END OF else OF if(!$billResponse->isOk())
   	} else {//Now handle just a simple payment info check
   	  $this->billResponse = $billResponse = $billRequest->authorizeOnly('0.00');
+      if($this->billResponse->response_reason_code == '289' || $this->billResponse->response_reason_code) {
+        //retry
+        $retry = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
+        $this->billResponse = $billResponse = $retry->authorizeOnly('0.01');
+      }
+
       if($this->billResponse->approved){
         $void = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
         $this->voidResponse = $voidResponse = $void->void($this->billResponse->transaction_id);
