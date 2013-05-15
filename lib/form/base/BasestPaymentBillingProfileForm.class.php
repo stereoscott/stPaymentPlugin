@@ -241,8 +241,10 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		//$this->dBg?sfContext::getInstance()->getLogger()->debug('Production Environment, Setting Sandbox to false'):null;
   	}
   	
+    //Either bill the outstanding transaction, or make a temporary auth to verfiy the payment information. 
   	if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended' && $subscription->updateARBStatus() && $subscription->retrieveARBstatus()!='suspended'){
-      //The silly extra code on the end was added because sometimes getting an updated status after a transaction error doesn't work. We need to make an API call here
+      //The silly extra code on the end was added because sometimes getting an updated status after a
+      //transaction error doesn't work. We need to make an API call here to make sure the ARB status we have is up to date.
       
       $this->billResponse = $billResponse = $billRequest->authorizeAndCapture($amount);
       
@@ -310,8 +312,9 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		}//END OF else OF if(!$billResponse->isOk())
   	} else {//Now handle just a simple payment info check
   	  $this->billResponse = $billResponse = $billRequest->authorizeOnly('0.00');
-      if($this->billResponse->response_reason_code == '289' || $this->billResponse->response_reason_code) {
+      if($this->billResponse->response_reason_code == '289' || $this->billResponse->response_reason_code = 289) {
         //retry
+        $this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') 0.00 verification failed, retrying with amount of 0.00]1 '):null; 
         $retry = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
         $this->billResponse = $billResponse = $retry->authorizeOnly('0.01');
       }

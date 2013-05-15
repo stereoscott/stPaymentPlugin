@@ -168,7 +168,7 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
         //If we never can find the processor for this subscription we need to throw an error
       }
       sfContext::getInstance()->getLogger->crit("Unable to find MerchantAccount to use for customer (Id: ) on ANS (Id: ) in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
-      sfContext::getInstance()->getLogger->debug("those Full Errors are: \n".$totalErrors);
+      sfContext::getInstance()->getLogger->debug("  those Full Errors are: \n".$totalErrors);
     }
     return $processor;
   }
