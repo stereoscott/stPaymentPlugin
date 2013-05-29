@@ -312,10 +312,11 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   		}//END OF else OF if(!$billResponse->isOk())
   	} else {//Now handle just a simple payment info check
   	  $this->billResponse = $billResponse = $billRequest->authorizeOnly('0.00');
-      if($this->billResponse->response_reason_code == '289' || $this->billResponse->response_reason_code = 289) {
+      if($this->billResponse->response_reason_code == '289' || $this->billResponse->response_reason_code == 289) {
         //retry
-        $this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') 0.00 verification failed, retrying with amount of 0.00]1 '):null; 
+        $this->dBg?sfContext::getInstance()->getLogger()->debug('[Cust: '.$this->getCustomer()->getId().'] 0.00 verification failed, retrying with amount of 0.00]1 '):null; 
         $retry = new AuthorizeNetAIM($processor->getUsername(), $processor->getPassword());
+        $retry = $this->getAuthNetAIMBillingApiObject($retry);
         $this->billResponse = $billResponse = $retry->authorizeOnly('0.01');
       }
 
