@@ -145,7 +145,6 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
     }
     
     $processor = stAuthorizeNet::getInstance();
-    $totalErrors = '';
     
     if ($merchantAccountId = $this->getMerchantAccountId()) {
       $processor->setMerchantAccountId($merchantAccountId);
@@ -159,16 +158,24 @@ abstract class PluginAuthNetSubscription extends BaseAuthNetSubscription
           if($processor != null && $this->updateStatusUsingAuthNet($error, $processor)){//the first term prevents a potential infinite loop of callbacks
             //This is the correct merchantAccountId
             $this->setMerchantAccountId($merchantAccountId);
+            sfContext::getInstance()->getLogger()->debug('Success, subscription uses merchantAccountId: '.$merchantAccountId." in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
+            try{
+              $this->save();
+            } catch (Exception $e) {
+              sfContext::getInstance()->getLogger()->err("Error saving: (".$e->getMessage().") in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
+            }
             return $processor;
-
+          } else {
+            sfContext::getInstance()->getLogger()->debug('Error checking if subscription with with merchantAccountId: '.$merchantAccountId." error message is: (".$error.") in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__); 
           }//otherwise, continue on to the next potential merchant account
           if($error !== '') $totalErrors .= $error."\n";//so we can track it
+        } else {
+          sfContext::getInstance()->getLogger()->err('Cound not find merchantAccountId from merchantAccountConfigKey: '.$merchantAccountConfigKey." in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
         }
         
         //If we never can find the processor for this subscription we need to throw an error
       }
-      sfContext::getInstance()->getLogger->crit("Unable to find MerchantAccount to use for customer (Id: ) on ANS (Id: ) in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
-      sfContext::getInstance()->getLogger->debug("  those Full Errors are: \n".$totalErrors);
+      sfContext::getInstance()->getLogger()->crit("Unable to find MerchantAccount to use for customer (Id: ) on ANS (Id: ) in getPaymentProcessor of PluginAuthNetSubscription at line: ".__LINE__);
     }
     return $processor;
   }
