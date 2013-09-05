@@ -378,11 +378,17 @@ class BasestPaymentForm extends BasestPaymentBaseForm
     // for subscriptions starting in a matter of days
     // schedul the first ARB payment on the n + 1 day (7 day trial, first payment is on day 8)
     if (preg_match('/(\d+) day/i', $trialLengthString, $matches)) {
-      $trialLengthString = $matches[1] + 1 . ' days';
+      $trialLengthString = $matches[1] . ' days';
+      $timestamp = strtotime($trialLengthString);
+    } elseif (preg_match('/(\d+) month/i', $trialLengthString, $matches)){
+      $timestamp = ifiSiteTools::addMonthsToTime($matches[1]);
+    } elseif (preg_match('/(\d+) year/i', $trialLengthString, $matches)){
+      $timestamp = ifiSiteTools::addMonthsToTime($matches[1] * 12);
     }
     
-    $dateTime = new DateTime("+$trialLengthString"); // n days, 1 month, 1 year
+    $dateTime = new DateTime();
     $dateTime->setTimezone(new DateTimezone('US/Mountain')); // Auth.net is in mountain time
+    $dateTime->setTimestamp($timestamp);
     
     return $dateTime->format('Y-m-d');
   }
