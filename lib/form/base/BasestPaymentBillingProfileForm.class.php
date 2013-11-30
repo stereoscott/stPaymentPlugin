@@ -109,11 +109,13 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     // get our customer subscription object so we know which merchant account to use
     try{
 	    $customerSubscription = Doctrine::getTable('CustomerSubscription')
-	      ->createQuery('cs')
+        ->retrieveOneByTransactionIDWithARB($this->getValue('subscription_id'));
+	     
+       /* ->createQuery('cs')
 	      ->innerJoin('cs.AuthNetSubscription ans')
 	      ->andWhere('ans.subscription_id = ?', $this->getValue('subscription_id'))
 //        ->orderBy('ans.created_at DESC')
-	      ->fetchOne();
+	      ->fetchOne();*/
 		  if($customerSubscription){$this->dBg?sfContext::getInstance()->getLogger()->debug('(Cust: '.$this->getCustomer()->getId().') Found Customer Subscription in save() of BasestPaymentBillingProfileForm at line: '.__LINE__):null;} 
 		  else {$this->dBg?sfContext::getInstance()->getLogger()->err('(Cust: '.$this->getCustomer()->getId().') Failed Finding Customer Subscription in save() of BasestPaymentBillingProfileForm at line: '.__LINE__):null;}
 	  } catch (Exception $e){$this->dBg?sfContext::getInstance()->getLogger()->crit('(Cust: '.$this->getCustomer()->getId().') Fatal Error Finding Customer Subscription: '.$e->getMessage(). 'in save() of BasestPaymentBillingProfileForm at line: '.__LINE__):null;}
@@ -286,27 +288,31 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   			}
         
   			//if we have a renewal
+  			
+				$fields = $this->getTransactionFields();
+				//we should generate the new purchase
+				$newPurchase = $purchase->generateNewPurchase(array(
+			      'bill_first_name'     => $fields['first_name'],
+			      'bill_last_name'      => $fields['last_name'], 
+			      'bill_street'         => $fields['address'],   
+			      'bill_street_2'       => null,                 
+			      'bill_city'           => $fields['city'],      
+			      'bill_region'         => substr($fields['state'], 0, 2),     
+			      'bill_region_other'   => $fields['zip'],  
+			      'bill_country'        => $fields['country'],   
+		  		));
   			if($this->isRenewal){
-  				$fields = $this->getTransactionFields();
-  				//we should generate the new purchase
-  				$newPurchase = $purchase->generateNewPurchase(array(
-  			      'bill_first_name'     => $fields['first_name'],
-  			      'bill_last_name'      => $fields['last_name'], 
-  			      'bill_street'         => $fields['address'],   
-  			      'bill_street_2'       => null,                 
-  			      'bill_city'           => $fields['city'],      
-  			      'bill_region'         => substr($fields['state'], 0, 2),     
-  			      'bill_region_other'   => $fields['zip'],  
-  			      'bill_country'        => $fields['country'],   
-  		  		));
-  				
   				// we should run the renewal from that purchase
   				$purchase->processRenewal($newPurchase, sfContext::getInstance());
   				
   				// we should send the renewal email
   				$this->getCustomer()->sendRenewalEmail($newPurchase);
   				
-  			}//END OF if($this->isRenewal)
+  			} else {
+          // we should run the renewal from that purchase
+          $purchase->processNonRenewal($newPurchase, sfContext::getInstance());
+
+        }//END OF if($this->isRenewal)
   			// we should clear the transaction errors
   			$subscription->markMissedPaymentsProcessed();
   		}//END OF else OF if(!$billResponse->isOk())
@@ -330,16 +336,22 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
       }
     }
 
-    //Status before update
-    $priorStatus = $subscription->retrieveARBstatus();
-  	
-  	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
-    $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscriptionApiObject);
-  	$this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Response Code: '.$updateResponse->getResultCode()):null;
-  	$this->dBg && sfConfig::get('sf_environment') != 'prod' ?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Request: '.$updateRequest->getPostString()):null;
-  
+    //turn off for local
+    if(sfConfig::get('sf_environment') != 'dev'){
+      //Status before update
+      $priorStatus = $subscription->retrieveARBstatus();
+    	
+    	//upate the billing info on the ARB with Auth.net Note this does not check if the card is good or not
+      $this->updateResponse = $updateResponse = $updateRequest->updateSubscription($this->getValue('subscription_id'), $this->subscriptionApiObject);
+    	
+      $this->dBg?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Response Code: '.$updateResponse->getResultCode()):null;
+    	$this->dBg && sfConfig::get('sf_environment') != 'prod' ?sfContext::getInstance()->getLogger()->debug('Process Update Complete, Request: '.$updateRequest->getPostString()):null;
+    } else {
+      $priorStatus == 'active';
+    }
+
     //We need to check to see if there is still a transaction to mark as processed and a status to update for suspended subscriptions
-    if($updateResponse->isOk() && $priorStatus == 'suspended'){
+    if($priorStatus == 'suspended' && $updateResponse->isOk()){
       //update status so we can check that it's active again.
       $resultMessage = $subscription->updateARBstatus();
       if($resultMessage === true){
