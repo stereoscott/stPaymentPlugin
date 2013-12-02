@@ -109,7 +109,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
     // get our customer subscription object so we know which merchant account to use
     try{
 	    $customerSubscription = Doctrine::getTable('CustomerSubscription')
-        ->retrieveOneByTransactionIDWithARB($this->getValue('subscription_id'));
+        ->retrieveOneByTransactionID($this->getValue('subscription_id'));
 	     
        /* ->createQuery('cs')
 	      ->innerJoin('cs.AuthNetSubscription ans')
