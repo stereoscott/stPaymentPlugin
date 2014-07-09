@@ -381,7 +381,7 @@ class BasestPaymentForm extends BasestPaymentBaseForm
       $trialLengthString = $matches[1] . ' days';
       $timestamp = strtotime($trialLengthString);
     } elseif (preg_match('/(\d+) month/i', $trialLengthString, $matches)){
-      $timestamp = ifiSiteTools::addMonthsToTime($matches[1]);
+      $timestamp = ifiSiteTools::addMonthsToTime($matches[1]); // Note: This creates an external dependency, we should be aware that we need code from the main brach of myifi for this to work. This is poor coding design, we should overload this function elsewhere if we can...
     } elseif (preg_match('/(\d+) year/i', $trialLengthString, $matches)){
       $timestamp = ifiSiteTools::addMonthsToTime($matches[1] * 12);
     }

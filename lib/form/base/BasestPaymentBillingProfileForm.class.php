@@ -244,7 +244,7 @@ class BasestPaymentBillingProfileForm extends BasestPaymentBaseForm
   	}
   	
     //Either bill the outstanding transaction, or make a temporary auth to verfiy the payment information. 
-  	if(($amount = $subscription->totalMissedPayments()) && $amount > 0 && $subscription->retrieveARBstatus()!='suspended' && $subscription->updateARBStatus() && $subscription->retrieveARBstatus()!='suspended'){
+  	if(($amount = $subscription->totalMissedPayments()) && $amount > 0){
       //The silly extra code on the end was added because sometimes getting an updated status after a
       //transaction error doesn't work. We need to make an API call here to make sure the ARB status we have is up to date.
       
